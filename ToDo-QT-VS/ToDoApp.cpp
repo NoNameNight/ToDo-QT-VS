@@ -1,25 +1,58 @@
 #include "ToDoApp.h"
 
 #include <QMouseEvent>
-#include <iostream>
 #include <QStringListModel>
 #include <QStandardItemModel>
 #include <QStandardItem>
-#include <QTimer>
 
+#include <QDialog>
+#include <QFormLayout>
+#include <QLineEdit>
+#include <QComboBox>
+#include <QDialogButtonBox>
+#include <QCalendarWidget>
+#include <QDateTimeEdit>
+
+#include <QTimer>
 #include <QDate>
+
+class NNNDateTimeEditor : public QDateTimeEdit
+{
+public:
+	NNNDateTimeEditor(QWidget* parent = nullptr) :
+		QDateTimeEdit(parent)
+	{
+		this->setDate(QDate::currentDate());
+		this->setDisplayFormat("yyyy/MM/dd");
+		this->setMinimumDate(QDate::currentDate());
+		this->setCalendarPopup(true);
+	}
+};
 
 ToDoApp::ToDoApp(QWidget* parent) :
 	QWidget(parent)
 { 
-	this->setWindowFlag(Qt::WindowStaysOnTopHint);
 	this->setWindowFlag(Qt::FramelessWindowHint);
+	this->setWindowFlag(Qt::Tool);
 	this->setAttribute(Qt::WA_TranslucentBackground);
 	this->setMouseTracking(true);
 	m_rubber_band = new QRubberBand(QRubberBand::Rectangle);
 	this->setMinimumSize(QSize(302, 186));
 	//this->setObjectName("todowidget");
 	//this->setStyleSheet("QWidget #todowidget { border-radius: 10px;background: white;}");
+
+	if (Config::instance()->isTopMost())
+	{ this->setWindowFlag(Qt::WindowStaysOnTopHint); }
+	if(Config::instance()->isMouseTransparent())
+	{ this->setWindowFlag(Qt::WindowTransparentForInput); }
+	this->setGeometry(
+		Config::instance()->windowX(), Config::instance()->windowY(),
+		Config::instance()->windowWidth(), Config::instance()->windowHeight()
+	);
+
+	this->initToDoDataAddDialog();
+
+	//m_setting_widget->show(); 
 
 	// 创建 QListView 对象
 	{
@@ -33,16 +66,6 @@ ToDoApp::ToDoApp(QWidget* parent) :
 
 		m_list_view->setModel(model);
 
-		//for (int i = 0; i < 20; ++i)
-		//{
-		//	QStandardItem* _item = new QStandardItem();
-		//	ToDoData* _data = new ToDoData();
-		//	_data->is_finished = false;
-		//	if (!i) { _data->is_finished = true; }
-		//	_data->thing = "thing | " + std::to_string(i);
-		//	_item->setData(reinterpret_cast<std::uintptr_t>(_data), Qt::UserRole + 1);
-		//	model->appendRow(_item);
-		//}
 		for (size_t i = 0; i < m_to_do_data_list.size(); ++i)
 		{
 			QStandardItem* _item = new QStandardItem();
@@ -73,19 +96,11 @@ ToDoApp::ToDoApp(QWidget* parent) :
 		m_to_do_data_add->setGeometry(
 			this->width() - 30, m_list_view_y - 25, 20, 20
 		);
-
-		connect(m_to_do_data_add, &QPushButton::clicked, 
-			[this]() {
-				QStandardItem* _item = new QStandardItem();
-				ToDoData* _data = new ToDoData();
-				_data->is_finished = false;
-				_data->thing = "thing | ";
-				_item->setData(reinterpret_cast<std::uintptr_t>(_data), Qt::UserRole + 1);
-				static_cast<QStandardItemModel*>(m_list_view->model())->appendRow(_item);
-			}
+		m_to_do_data_add->setStyleSheet("QPushButton { background-color: transparent; }");
+		connect(
+			m_to_do_data_add, &QPushButton::clicked,
+			this, &ToDoApp::showToDoDataAddDialog
 		);
-
-		m_to_do_data_add->show();
 	}
 
 	/// 设置每一秒刷新一次
@@ -100,11 +115,150 @@ ToDoApp::ToDoApp(QWidget* parent) :
 ToDoApp::~ToDoApp()
 { }
 
+void ToDoApp::changeTopMost()
+{
+	bool _is_top_most = this->windowFlags() & Qt::WindowStaysOnTopHint;
+	Config::instance()->setIsTopMose(!_is_top_most); 
+	this->setWindowFlag(Qt::WindowStaysOnTopHint, !_is_top_most);
+	this->show(); 
+}
+
+void ToDoApp::changeMouseTransparent()
+{
+	bool _is_mouse_transparent = 
+		this->windowFlags() & Qt::WindowTransparentForInput; 
+	Config::instance()->setIsMouseTransparent(!_is_mouse_transparent);
+	this->setWindowFlag(Qt::WindowTransparentForInput, !_is_mouse_transparent);
+	this->show();
+}
+
+void ToDoApp::addToDoListItem(int64_t info_ptr, int64_t text_ptr, std::string thing, bool is_finished, int64_t create_time, ToDoData::DeadlineType deadline_type, int64_t deadline_date, int64_t deadline_time, int64_t finished_time)
+{
+	QStandardItem* _item = new QStandardItem();
+	ToDoData* _data = new ToDoData();
+	_data->text_ptr = text_ptr;
+	_data->info_ptr = info_ptr;
+	_data->thing = thing;
+	_data->is_finished = is_finished;
+	_data->create_time = create_time;
+	_data->deadline_type = deadline_type;
+	_data->deadline_date = deadline_date;
+	_data->deadline_time = deadline_time;
+	_data->finished_time = finished_time;
+	_item->setData(reinterpret_cast<std::uintptr_t>(_data), Qt::UserRole + 1);
+
+	QStandardItemModel* list_view_model =
+		static_cast<QStandardItemModel*>(m_list_view->model());
+	int _idx = 0;
+	while (_idx < list_view_model->rowCount())
+	{
+		QStandardItem* item = list_view_model->item(_idx);
+		if (item)
+		{
+			QVariant var = item->data(Qt::UserRole + 1);
+			ToDoData* itemData = reinterpret_cast<ToDoData*>(var.value<std::uintptr_t>());
+			if (*_data < *itemData)
+			{
+				break;
+			}
+		}
+		_idx++;
+	}
+	list_view_model->insertRow(_idx, _item);
+}
+
+void ToDoApp::addToDoListItem(std::string thing, bool is_finished, ToDoData::DeadlineType deadline_type, int64_t deadline_date, int64_t deadline_time, int64_t finished_time)
+{
+	int64_t create_time = QDateTime::currentDateTime().toMSecsSinceEpoch();
+
+	GlobalVariables* gv = GlobalVariables::instance();
+	uint64_t text_ptr = 0;
+	uint64_t info_ptr = 0;
+
+	{
+		std::ofstream text_ofs;
+		text_ofs.open(gv->getTextFilePath(), std::ios::binary | std::ios::app);
+		text_ofs.seekp(0, std::ios::end);
+		text_ptr = text_ofs.tellp();
+		size_t text_size = thing.size();
+		char text_size_char[8] = { };
+		memcpy(text_size_char, &text_size, 8);
+		text_ofs.write(text_size_char, 8);
+		text_ofs.write(thing.data(), thing.size());
+		text_ofs.close();
+	}
+	{
+		std::ofstream info_ofs;
+		info_ofs.open(gv->getInfoFilePath(), std::ios::binary | std::ios::app);
+		info_ofs.seekp(0, std::ios::end);
+		info_ptr = info_ofs.tellp();
+		char _info[128] = { };
+		memcpy(_info + ToDoData::text_ptr_offset, &text_ptr, 8);
+		memcpy(_info + ToDoData::is_finished_offset, &is_finished, 1);
+		memcpy(_info + ToDoData::create_time_offset, &create_time, 8);
+		char deadline_type_char = static_cast<char>(deadline_type);
+		memcpy(_info + ToDoData::deadline_type_offset, &deadline_type_char, 1);
+		memcpy(_info + ToDoData::deadline_date_offset, &deadline_date, 8);
+		memcpy(_info + ToDoData::deadline_time_offset, &deadline_time, 8);
+		memcpy(_info + ToDoData::finished_time_offset, &finished_time, 8);
+		info_ofs.write(_info, 128);
+		info_ofs.close();
+	}
+	{
+		std::ofstream data_ofs;
+		data_ofs.open(gv->getDataFilePath(), std::ios::binary | std::ios::app);
+		char _data[64] = { };
+		memcpy(_data, &info_ptr, 8);
+		data_ofs.write(_data, 64);
+		data_ofs.close();
+	}
+
+	addToDoListItem(
+		info_ptr, text_ptr, 
+		thing, is_finished, 
+		create_time, deadline_type, 
+		deadline_date, deadline_time, finished_time
+	);
+
+	//QStandardItem* _item = new QStandardItem();
+	//ToDoData* _data = new ToDoData();
+	//_data->text_ptr = text_ptr;
+	//_data->info_ptr = info_ptr;
+	//_data->thing = thing;
+	//_data->is_finished = is_finished;
+	//_data->create_time = create_time;
+	//_data->deadline_type = deadline_type;
+	//_data->deadline_date = deadline_date;
+	//_data->deadline_time = deadline_time;
+	//_data->finished_time = finished_time;
+	//_item->setData(reinterpret_cast<std::uintptr_t>(_data), Qt::UserRole + 1);
+
+
+	//QStandardItemModel* list_view_model = 
+	//	static_cast<QStandardItemModel*>(m_list_view->model());
+	//int _idx = 0; 
+	//while (_idx < list_view_model->rowCount())
+	//{
+	//	QStandardItem* item = list_view_model->item(_idx);
+	//	if (item)
+	//	{
+	//		QVariant var = item->data(Qt::UserRole + 1);
+	//		ToDoData* itemData = reinterpret_cast<ToDoData*>(var.value<std::uintptr_t>());
+	//		if (*_data < *itemData)
+	//		{
+	//			break;
+	//		}
+	//	}
+	//	_idx++;
+	//}
+	//list_view_model->insertRow(_idx, _item);
+}
+
 void ToDoApp::mousePressEvent(QMouseEvent* ev)
 {
 	if (ev->buttons() & Qt::MouseButton::LeftButton) 
 	{
-		m_dragPosition = ev->globalPosition().toPoint() - frameGeometry().topLeft();
+		m_drag_position = ev->globalPosition().toPoint() - frameGeometry().topLeft();
 		ev->accept();
 	}
 
@@ -121,6 +275,19 @@ void ToDoApp::mousePressEvent(QMouseEvent* ev)
 			);
 			m_rubber_band->show();
 			m_is_rubber_band_show = true;
+		}
+
+		if (m_mouse_hit_test == MouseHitTest::Normal)
+		{
+			QRect _setting_png_rect(
+				this->width() - m_setting_png_width - m_setting_png_padding, 5,
+				m_setting_png_width, m_setting_png_width
+			);
+			QPoint _mouse = this->mapFromGlobal(QCursor::pos());
+			if (_setting_png_rect.contains(_mouse))
+			{
+				this->showSettingWidget();
+			}
 		}
 	}
 }
@@ -269,7 +436,10 @@ void ToDoApp::mouseMoveEvent(QMouseEvent * ev)
 	}
 	case ToDoApp::MouseHitTest::Move:
 	{
-		move(ev->globalPosition().toPoint() - m_dragPosition);
+		QPoint _now_pos = ev->globalPosition().toPoint() - m_drag_position;
+		this->move(_now_pos);
+		Config::instance()->setWindowX(_now_pos.x());
+		Config::instance()->setWindowY(_now_pos.y());
 		ev->accept();
 		break;
 	}
@@ -301,6 +471,8 @@ void ToDoApp::mouseReleaseEvent(QMouseEvent* ev)
 void ToDoApp::resizeEvent(QResizeEvent* event)
 {
 	QSize app_size = event->size();
+	Config::instance()->setWindowWidth(app_size.width());
+	Config::instance()->setWindowHeight(app_size.height());
 
 	QRect to_do_data_add = m_to_do_data_add->geometry();
 	m_to_do_data_add->setGeometry(
@@ -358,6 +530,16 @@ void ToDoApp::paintEvent(QPaintEvent* event)
 		QDate::currentDate().toString("MM 月 dd 日 dddd")
 	);
 
+	painter.restore();
+
+	painter.save();
+	QRect _setting_png_rect(
+		this->width() - m_setting_png_width - m_setting_png_padding, 5,
+		m_setting_png_width, m_setting_png_width
+	);
+	painter.drawPixmap(
+		_setting_png_rect, *GlobalVariables::instance()->setting_png
+	);
 	painter.restore();
 }
 
@@ -456,6 +638,101 @@ void ToDoApp::updataData()
 	steady_clock::time_point frameStart = steady_clock::now();
 	duration<float> delta = duration<float>(frameStart - m_last_tick);
 
+	GlobalVariables* gv = GlobalVariables::instance();
+	for (ToDoRepeatData* _data : gv->repeat_data_list)
+	{
+		int64_t now_time = QDateTime::currentDateTime().toMSecsSinceEpoch();
+		if (_data->isNeedRepeat(now_time))
+		{
+			_data->setLastAddTime(gv->getRepeatInfoFilePath(), now_time);
+			int64_t deadline_time = QDateTime(QDate::currentDate(), QTime(0, 0, 0))
+				.addMSecs(_data->duration).addDays(-1).toMSecsSinceEpoch();
+			this->addToDoListItem(
+				_data->thing, false, ToDoData::DeadlineType::Day, deadline_time, 0, 0
+			);
+		}
+	}
+
 	this->update();
 	m_last_tick = frameStart;
+}
+
+void ToDoApp::initToDoDataAddDialog()
+{
+	m_to_do_data_add_dialog = new QDialog(this);
+	m_to_do_data_add_dialog->setWindowTitle("Add");
+
+	QFormLayout* form = new QFormLayout(m_to_do_data_add_dialog);
+	form->setLabelAlignment(Qt::AlignRight);
+
+	// thing
+	QString thing = QString("thing: ");
+	QLineEdit* thing_box = new QLineEdit(m_to_do_data_add_dialog);
+	form->addRow(thing, thing_box);
+	//m_to_do_data_add_dialog->show();
+	// deadline
+	QString deadline = QString("deadline: ");
+	QComboBox* deadline_box = new QComboBox(m_to_do_data_add_dialog);
+	deadline_box->addItem("今天");
+	deadline_box->addItem("明天");
+	deadline_box->addItem("自定义");
+	form->addRow(deadline, deadline_box);
+	// detail deadline
+	QString detail_deadline = QString("detail deadline: ");
+	NNNDateTimeEditor* detail_deadline_box = 
+		new NNNDateTimeEditor(m_to_do_data_add_dialog);
+	detail_deadline_box->setEnabled(false);
+	form->addRow(detail_deadline, detail_deadline_box);
+
+	connect(deadline_box, &QComboBox::currentIndexChanged, this,
+		[this, deadline_box, detail_deadline_box]() {
+			if (deadline_box->currentText() == "今天")
+			{
+				detail_deadline_box->setDate(QDate::currentDate());
+				detail_deadline_box->setEnabled(false);
+			}
+			if (deadline_box->currentText() == "明天")
+			{
+				detail_deadline_box->setDate(QDate::currentDate().addDays(1));
+				detail_deadline_box->setEnabled(false);
+			}
+			if (deadline_box->currentText() == "自定义")
+			{
+				detail_deadline_box->setEnabled(true);
+			}
+		}
+	);
+
+	QDialogButtonBox* buttonBox = new QDialogButtonBox(
+		QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+		Qt::Horizontal, this
+	);
+	QObject::connect(buttonBox, &QDialogButtonBox::accepted,
+		m_to_do_data_add_dialog,
+		[this, thing_box, deadline_box, detail_deadline_box]() {
+			this->addToDoListItem(
+				thing_box->text().toStdString(), false,
+				ToDoData::DeadlineType::Day, 
+				QDateTime(
+					detail_deadline_box->date(), QTime(0, 0, 0)
+				).toMSecsSinceEpoch(),
+				0, 0
+			);
+
+			m_to_do_data_add_dialog->hide();
+			thing_box->setText("");
+			deadline_box->setCurrentText("今天");
+			detail_deadline_box->setDate(QDate::currentDate()); 
+			detail_deadline_box->setEnabled(false); 
+		}
+	);
+	QObject::connect(
+		buttonBox, &QDialogButtonBox::rejected,
+		m_to_do_data_add_dialog,
+		[this]() {
+			m_to_do_data_add_dialog->hide();
+		}
+	);
+
+	form->addRow(buttonBox);
 }

@@ -1,6 +1,8 @@
 #pragma once
 
+#include "SettingWidget.h"
 #include "ToDoListView.h"
+#include "Util.h"
 
 #include <QWidget>
 #include <QRubberBand>
@@ -14,6 +16,36 @@ class ToDoApp : public QWidget
 public:
 	ToDoApp(QWidget* parent = nullptr);
 	~ToDoApp();
+	void changeTopMost();
+	void changeMouseTransparent();
+	void addToDoListItem(
+		int64_t info_ptr, int64_t text_ptr,
+		std::string thing, bool is_finished, 
+		int64_t create_time,
+		ToDoData::DeadlineType deadline_type,
+		int64_t deadline_date, int64_t deadline_time, 
+		int64_t finished_time 
+	);
+	void addToDoListItem(
+		std::string thing, bool is_finished,
+		ToDoData::DeadlineType deadline_type, 
+		int64_t deadline_date, int64_t deadline_time,
+		int64_t finished_time
+	);
+	void showToDoDataAddDialog()
+	{
+		if (m_to_do_data_add_dialog->isVisible()) { return; } 
+		m_to_do_data_add_dialog->show(); 
+	}
+	void showSettingWidget()
+	{
+		if(m_setting_widget == nullptr) 
+		{
+			m_setting_widget = new SettingWidget(this);
+		}
+		if (m_setting_widget->isVisible()) { return; }
+		m_setting_widget->show();
+	}
 protected:
 	void mousePressEvent(QMouseEvent* ev) override;
 	void mouseMoveEvent(QMouseEvent* ev) override;
@@ -23,10 +55,11 @@ protected:
 private:
 	void mouseHitTest(QMouseEvent* ev);
 	void updataData();
+	void initToDoDataAddDialog();
 private:
 	QTimer* m_game_timer = nullptr;
 
-	QPoint m_dragPosition;
+	QPoint m_drag_position;
 	QPoint m_last_mouse_position;
 
 	int m_top_box_height = 20;
@@ -38,7 +71,10 @@ private:
 	QFont m_now_mouth_day_font = QFont("Serif", 8);
 
 	QPushButton* m_to_do_data_add = nullptr;
+	QDialog* m_to_do_data_add_dialog = nullptr;
 	ToDoListView* m_list_view = nullptr;
+
+	SettingWidget* m_setting_widget = nullptr;
 
 	QRubberBand* m_rubber_band = nullptr; 
 	QPoint m_rubber_band_left_top;                    //相对与屏幕
@@ -60,4 +96,8 @@ private:
 	MouseHitTest m_mouse_hit_test = MouseHitTest::Normal;
 
 	std::vector<ToDoData*> m_to_do_data_list;
+	bool m_is_data_consolidation = false;
+
+	int m_setting_png_width = 15;
+	int m_setting_png_padding = 5;
 };

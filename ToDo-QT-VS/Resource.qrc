@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/public">
+        <file>resource/delete.png</file>
+        <file>resource/ico.ico</file>
+        <file>resource/setting.png</file>
+    </qresource>
+</RCC>

@@ -1,0 +1,72 @@
+data.data 
+	{ 8B
+		size 8B
+	}
+	[ 64B
+		ptr 8B /*point to info.data*/
+		//uuid 32B  
+	]
+text.data 
+	[ (8+size)B
+		size 8B /*text size*/ 
+		text (size)B
+	]
+info.data 
+	[ 128B
+		ptr 8B /*point to text.data*/
+		is_finished 1B
+		create_time 8B
+		deadline_type 1B
+		deadline_date 8B
+		deadline_time 8B
+		finished_time 8B
+	]
+
+data.data 
+	{ 8B
+		size 8B
+	}
+	[ 64B
+		ptr 8B /*point to repeat_info.data*/
+	]
+repeat_text.data 
+	[ (8+size)B  
+		size 8B /*text size*/ 
+		text (size)B
+	]
+repeat_info.data 
+	[ 64B 
+		ptr 8B /*point to repeat_text.data*/
+		repeat_type 1B
+		last_add_time 8B
+		duration 8B
+	]
+
+
+config.data
+	{ 64B
+		window_x 4B					0
+		window_y 4B					4
+		window_width 4B				8
+		window_height 4B			12
+		is_mouse_transparent 1B		16
+		is_top_most 1B				17
+	}
+	{ 128B
+		[ 8B  //快捷键node
+			is_ctrl 1B
+			is_alt 1B
+			is_shift 1B
+			Placeholding 3B   // 占位
+			char 1B
+			Placeholding 1B   // 占位
+		]
+	}
+	//[ 32B
+	//	is_ctrl 1B
+	//	is_alt 1B
+	//	is_shift 1B
+	//	Placeholding 5B   // 占位
+	//	mouse_transparent_char 1B
+	//	top_most_char 1B
+	//]
