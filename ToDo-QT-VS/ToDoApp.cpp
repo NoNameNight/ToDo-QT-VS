@@ -11,23 +11,9 @@
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QCalendarWidget>
-#include <QDateTimeEdit>
 
 #include <QTimer>
 #include <QDate>
-
-class NNNDateTimeEditor : public QDateTimeEdit
-{
-public:
-	NNNDateTimeEditor(QWidget* parent = nullptr) :
-		QDateTimeEdit(parent)
-	{
-		this->setDate(QDate::currentDate());
-		this->setDisplayFormat("yyyy/MM/dd");
-		this->setMinimumDate(QDate::currentDate());
-		this->setCalendarPopup(true);
-	}
-};
 
 ToDoApp::ToDoApp(QWidget* parent) :
 	QWidget(parent)
@@ -61,6 +47,7 @@ ToDoApp::ToDoApp(QWidget* parent) :
 			1, m_list_view_y, 
 			this->width() - 2, this->height() - m_list_view_y - 1
 		);
+		m_list_view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn); 
 
 		QStandardItemModel* model = new QStandardItemModel();
 
@@ -132,7 +119,7 @@ void ToDoApp::changeMouseTransparent()
 	this->show();
 }
 
-void ToDoApp::addToDoListItem(int64_t info_ptr, int64_t text_ptr, std::string thing, bool is_finished, int64_t create_time, ToDoData::DeadlineType deadline_type, int64_t deadline_date, int64_t deadline_time, int64_t finished_time)
+void ToDoApp::addToDoListItem(int64_t info_ptr, int64_t text_ptr, std::string thing, bool is_finished, int64_t create_time, int64_t deadline_date, int64_t deadline_time, int64_t finished_time)
 {
 	QStandardItem* _item = new QStandardItem();
 	ToDoData* _data = new ToDoData();
@@ -140,11 +127,11 @@ void ToDoApp::addToDoListItem(int64_t info_ptr, int64_t text_ptr, std::string th
 	_data->info_ptr = info_ptr;
 	_data->thing = thing;
 	_data->is_finished = is_finished;
-	_data->create_time = create_time;
-	_data->deadline_type = deadline_type;
+	_data->create_date_time = create_time;
+	//_data->deadline_type = deadline_type;
 	_data->deadline_date = deadline_date;
 	_data->deadline_time = deadline_time;
-	_data->finished_time = finished_time;
+	_data->finished_date_time = finished_time;
 	_item->setData(reinterpret_cast<std::uintptr_t>(_data), Qt::UserRole + 1);
 
 	QStandardItemModel* list_view_model =
@@ -167,7 +154,7 @@ void ToDoApp::addToDoListItem(int64_t info_ptr, int64_t text_ptr, std::string th
 	list_view_model->insertRow(_idx, _item);
 }
 
-void ToDoApp::addToDoListItem(std::string thing, bool is_finished, ToDoData::DeadlineType deadline_type, int64_t deadline_date, int64_t deadline_time, int64_t finished_time)
+void ToDoApp::addToDoListItem(std::string thing, bool is_finished, int64_t deadline_date, int64_t deadline_time, int64_t finished_time)
 {
 	int64_t create_time = QDateTime::currentDateTime().toMSecsSinceEpoch();
 
@@ -195,12 +182,12 @@ void ToDoApp::addToDoListItem(std::string thing, bool is_finished, ToDoData::Dea
 		char _info[128] = { };
 		memcpy(_info + ToDoData::text_ptr_offset, &text_ptr, 8);
 		memcpy(_info + ToDoData::is_finished_offset, &is_finished, 1);
-		memcpy(_info + ToDoData::create_time_offset, &create_time, 8);
-		char deadline_type_char = static_cast<char>(deadline_type);
-		memcpy(_info + ToDoData::deadline_type_offset, &deadline_type_char, 1);
+		memcpy(_info + ToDoData::create_date_time_offset, &create_time, 8);
+		//char deadline_type_char = static_cast<char>(deadline_type);
+		//memcpy(_info + ToDoData::deadline_type_offset, &deadline_type_char, 1);
 		memcpy(_info + ToDoData::deadline_date_offset, &deadline_date, 8);
 		memcpy(_info + ToDoData::deadline_time_offset, &deadline_time, 8);
-		memcpy(_info + ToDoData::finished_time_offset, &finished_time, 8);
+		memcpy(_info + ToDoData::finished_date_time_offset, &finished_time, 8);
 		info_ofs.write(_info, 128);
 		info_ofs.close();
 	}
@@ -216,7 +203,7 @@ void ToDoApp::addToDoListItem(std::string thing, bool is_finished, ToDoData::Dea
 	addToDoListItem(
 		info_ptr, text_ptr, 
 		thing, is_finished, 
-		create_time, deadline_type, 
+		create_time,// deadline_type, 
 		deadline_date, deadline_time, finished_time
 	);
 
@@ -495,7 +482,7 @@ void ToDoApp::paintEvent(QPaintEvent* event)
 	painter.setRenderHint(QPainter::Antialiasing);
 
 	// 设置背景颜色
-	QColor appColor(100, 100, 100, 100); // 白色背景
+	QColor appColor(100, 100, 100, 100);
 	painter.setBrush(appColor);
 	painter.setPen(appColor);
 
@@ -644,11 +631,12 @@ void ToDoApp::updataData()
 		int64_t now_time = QDateTime::currentDateTime().toMSecsSinceEpoch();
 		if (_data->isNeedRepeat(now_time))
 		{
-			_data->setLastAddTime(gv->getRepeatInfoFilePath(), now_time);
+			_data->setLastAddDateTime(gv->getRepeatInfoFilePath(), now_time);
 			int64_t deadline_time = QDateTime(QDate::currentDate(), QTime(0, 0, 0))
 				.addMSecs(_data->duration).addDays(-1).toMSecsSinceEpoch();
 			this->addToDoListItem(
-				_data->thing, false, ToDoData::DeadlineType::Day, deadline_time, 0, 0
+				_data->thing, false,// ToDoData::DeadlineType::Day,
+				deadline_time, _data->deadline_time, 0
 			);
 		}
 	}
@@ -666,23 +654,34 @@ void ToDoApp::initToDoDataAddDialog()
 	form->setLabelAlignment(Qt::AlignRight);
 
 	// thing
-	QString thing = QString("thing: ");
+	//QString thing = QString("thing: ");
+	QString thing = QString("任务: ");
 	QLineEdit* thing_box = new QLineEdit(m_to_do_data_add_dialog);
 	form->addRow(thing, thing_box);
 	//m_to_do_data_add_dialog->show();
 	// deadline
-	QString deadline = QString("deadline: ");
+	//QString deadline = QString("deadline: ");
+	QString deadline = QString("结束日期: ");
 	QComboBox* deadline_box = new QComboBox(m_to_do_data_add_dialog);
 	deadline_box->addItem("今天");
 	deadline_box->addItem("明天");
 	deadline_box->addItem("自定义");
 	form->addRow(deadline, deadline_box);
 	// detail deadline
-	QString detail_deadline = QString("detail deadline: ");
-	NNNDateTimeEditor* detail_deadline_box = 
-		new NNNDateTimeEditor(m_to_do_data_add_dialog);
+	//QString detail_deadline = QString("detail deadline: ");
+	QString detail_deadline = QString("具体结束日期: ");
+	NNNDateEditor* detail_deadline_box = 
+		new NNNDateEditor(m_to_do_data_add_dialog);
 	detail_deadline_box->setEnabled(false);
 	form->addRow(detail_deadline, detail_deadline_box);
+
+	// deadline day time 结束那天的什么时候结束
+	QString deadline_time = QString("结束时间: ");
+	NNNTimeEditor* deadline_time_box =
+		new NNNTimeEditor(m_to_do_data_add_dialog);
+	deadline_time_box->setTime(QTime(23, 59, 59));
+	form->addRow(deadline_time, deadline_time_box);
+
 
 	connect(deadline_box, &QComboBox::currentIndexChanged, this,
 		[this, deadline_box, detail_deadline_box]() {
@@ -709,14 +708,14 @@ void ToDoApp::initToDoDataAddDialog()
 	);
 	QObject::connect(buttonBox, &QDialogButtonBox::accepted,
 		m_to_do_data_add_dialog,
-		[this, thing_box, deadline_box, detail_deadline_box]() {
+		[this, thing_box, deadline_box, detail_deadline_box, deadline_time_box]() {
 			this->addToDoListItem(
 				thing_box->text().toStdString(), false,
-				ToDoData::DeadlineType::Day, 
+				//ToDoData::DeadlineType::Day, 
 				QDateTime(
 					detail_deadline_box->date(), QTime(0, 0, 0)
 				).toMSecsSinceEpoch(),
-				0, 0
+				deadline_time_box->time().msecsSinceStartOfDay(), 0
 			);
 
 			m_to_do_data_add_dialog->hide();
@@ -724,6 +723,7 @@ void ToDoApp::initToDoDataAddDialog()
 			deadline_box->setCurrentText("今天");
 			detail_deadline_box->setDate(QDate::currentDate()); 
 			detail_deadline_box->setEnabled(false); 
+			deadline_time_box->setTime(QTime(23, 59, 59));
 		}
 	);
 	QObject::connect(

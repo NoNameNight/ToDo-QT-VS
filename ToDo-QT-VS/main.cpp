@@ -16,6 +16,8 @@
 #include <QSystemTrayIcon>
 #include <QMenu>
 
+#include <QDir>
+
 ToDoApp* w = nullptr;
 
 static void loadResource();
@@ -84,11 +86,29 @@ int main(int argc, char* argv[])
 {
 	QApplication a(argc, argv);
 
-	NSharedMemory sharedMemory("20250405NNNCreated");
-	if (!sharedMemory.canUse())
+	//NSharedMemory sharedMemory("20250405NNNCreated");
+	//if (!sharedMemory.canUse())
+	//{
+	//	return -1;
+	//}
+
 	{
-		return -1;
+		QDir file_dir(
+			QString::fromStdString(GlobalVariables::instance()->file_dir)
+		);
+		QDir temp_file_dir(
+			QString::fromStdString(GlobalVariables::instance()->temp_file_dir)
+		);
+		if (!file_dir.exists()) 
+		{
+			file_dir.mkpath(file_dir.absolutePath());
+		}
+		if (!temp_file_dir.exists())
+		{
+			temp_file_dir.mkpath(temp_file_dir.absolutePath());
+		}
 	}
+
 
 	Config::instance()->loadConfig();
 	loadResource();
@@ -96,6 +116,7 @@ int main(int argc, char* argv[])
 	toDoRepeatDataConsolidation();
 	toDoDataConsolidation();
 	GlobalVariables::instance()->loadRepeatDataFromFile();
+
 
 	w = new ToDoApp(); 
 
@@ -126,13 +147,13 @@ int main(int argc, char* argv[])
 			int64_t finished_time = 0;
 			memcpy(&text_ptr, _info + ToDoData::text_ptr_offset, 8);
 			memcpy(&is_finished, _info + ToDoData::is_finished_offset, 1);
-			memcpy(&create_time, _info + ToDoData::create_time_offset, 8);
-			memcpy(&deadline_type_char, _info + ToDoData::deadline_type_offset, 1);
+			memcpy(&create_time, _info + ToDoData::create_date_time_offset, 8);
+			//memcpy(&deadline_type_char, _info + ToDoData::deadline_type_offset, 1);
 			memcpy(&deadline_date, _info + ToDoData::deadline_date_offset, 8);
 			memcpy(&deadline_time, _info + ToDoData::deadline_time_offset, 8);
-			memcpy(&finished_time, _info + ToDoData::finished_time_offset, 8);
-			ToDoData::DeadlineType deadline_type =
-				static_cast<ToDoData::DeadlineType>(deadline_type_char);
+			memcpy(&finished_time, _info + ToDoData::finished_date_time_offset, 8);
+			//ToDoData::DeadlineType deadline_type =
+			//	static_cast<ToDoData::DeadlineType>(deadline_type_char);
 
 			size_t text_size = 0;
 			char _text_size_char[8] = { };
@@ -144,7 +165,7 @@ int main(int argc, char* argv[])
 			std::string thing(_text_buf, text_size);
 			w->addToDoListItem(
 				info_ptr, text_ptr,
-				thing, is_finished, create_time, deadline_type, 
+				thing, is_finished, create_time,// deadline_type, 
 				deadline_date, deadline_time, finished_time
 			);
 		}
@@ -153,6 +174,7 @@ int main(int argc, char* argv[])
 		text_ifs.close();
 	}
 
+	// 加载热键
 	{
 		Config* config = Config::instance();
 		GlobalVariables* gv = GlobalVariables::instance();
@@ -356,13 +378,13 @@ void toDoDataConsolidation()
 		int64_t finished_time = 0;
 		memcpy(&text_ptr, _info + ToDoData::text_ptr_offset, 8);
 		memcpy(&is_finished, _info + ToDoData::is_finished_offset, 1);
-		memcpy(&create_time, _info + ToDoData::create_time_offset, 8);
-		memcpy(&deadline_type_char, _info + ToDoData::deadline_type_offset, 1);
+		memcpy(&create_time, _info + ToDoData::create_date_time_offset, 8);
+		//memcpy(&deadline_type_char, _info + ToDoData::deadline_type_offset, 1);
 		memcpy(&deadline_date, _info + ToDoData::deadline_date_offset, 8);
 		memcpy(&deadline_time, _info + ToDoData::deadline_time_offset, 8);
-		memcpy(&finished_time, _info + ToDoData::finished_time_offset, 8);
-		ToDoData::DeadlineType deadline_type =
-			static_cast<ToDoData::DeadlineType>(deadline_type_char);
+		memcpy(&finished_time, _info + ToDoData::finished_date_time_offset, 8);
+		//ToDoData::DeadlineType deadline_type =
+		//	static_cast<ToDoData::DeadlineType>(deadline_type_char);
 
 		if (is_finished &&
 			QDateTime(QDate::currentDate(), QTime(0, 0, 0))
@@ -425,3 +447,15 @@ void toDoDataConsolidation()
 	//	QMessageBox::warning(nullptr, "Text文件覆盖错误", std::strerror(errno));
 	//}
 }
+
+//#include <iostream>
+//#include <QWidget>
+//#include <QApplication>
+//#include <QPushButton>
+//
+//int main(int argc, char* argv[])
+//{
+//	QApplication a(argc, argv);
+//
+//	return a.exec();
+//}

@@ -45,13 +45,78 @@ std::string getUUID(GenderatorUUIDType type)
 	return uuid_str;
 }
 
-int ToDoData::text_ptr_offset = 0;
-int ToDoData::is_finished_offset = 8;
-int ToDoData::create_time_offset = 9;
-int ToDoData::deadline_type_offset = 17;
-int ToDoData::deadline_date_offset = 18;
-int ToDoData::deadline_time_offset = 26;
-int ToDoData::finished_time_offset = 34;
+const int ToDoData::text_ptr_offset = 0;
+const int ToDoData::is_finished_offset = 8;
+const int ToDoData::create_date_time_offset = 9;
+//const int ToDoData::deadline_type_offset = 17;
+const int ToDoData::deadline_date_offset = 18;
+const int ToDoData::deadline_time_offset = 26;
+const int ToDoData::finished_date_time_offset = 34;
+const int ToDoData::this_size = 128;
+
+void ToDoData::setThing(std::string info_file_path, std::string text_file_path, std::string thing)
+{
+	this->thing = thing;
+	std::fstream _text_fs;
+	std::ofstream _info_ofs;
+	_text_fs.open(text_file_path, std::ios::binary | std::ios::in | std::ios::out);
+	_info_ofs.open(info_file_path, std::ios::binary | std::ios::in | std::ios::out);
+
+	char _size_buf[8] = {};
+	int64_t _text_file_size = 0;
+	int64_t _text_ptr = 0;
+	_text_fs.seekg(0, std::ios::beg);
+	_text_fs.read(_size_buf, 8);
+	memcpy(&_text_file_size, _size_buf, 8);
+	_text_ptr = _text_file_size;
+
+	_text_fs.seekp(_text_ptr);
+	memset(_size_buf, 0, 8);
+	int64_t _thing_size = this->thing.size();
+	memcpy(_size_buf, &_thing_size, 8);
+	_text_fs.write(_size_buf, 8);
+	_text_fs.write(this->thing.data(), this->thing.size());
+	_text_file_size += 8 + this->thing.size();
+	_text_fs.seekp(0, std::ios::beg);
+	memset(_size_buf, 0, 8);
+	memcpy(_size_buf, &_text_file_size, 8);
+	_text_fs.write(_size_buf, 8);
+
+	_info_ofs.seekp(this->info_ptr + this->text_ptr_offset);
+	memset(_size_buf, 0, 8);
+	memcpy(_size_buf, &_text_ptr, 8);
+	_info_ofs.write(_size_buf, 8);
+
+	_text_fs.close();
+	_info_ofs.close();
+}
+
+void ToDoData::setIsFinished(std::string info_file_path, bool flag)
+{
+	this->is_finished = flag;
+	std::ofstream _info_ofs;
+	_info_ofs.open(info_file_path, std::ios::binary | std::ios::in | std::ios::out);
+
+	_info_ofs.seekp(this->info_ptr + this->is_finished_offset);
+	char _repeat_type_char = static_cast<char>(this->is_finished);
+	_info_ofs.write(&_repeat_type_char, 1);
+
+	_info_ofs.close();
+}
+
+void ToDoData::setFinishedTime(std::string info_file_path, int64_t time)
+{
+	this->finished_date_time = time;
+	std::ofstream _info_ofs;
+	_info_ofs.open(info_file_path, std::ios::binary | std::ios::in | std::ios::out);
+
+	_info_ofs.seekp(this->info_ptr + this->finished_date_time_offset);
+	char size_buf[8] = {};
+	memcpy(&size_buf, &this->finished_date_time, 8);
+	_info_ofs.write(size_buf, 8);
+
+	_info_ofs.close();
+}
 
 bool ToDoData::operator<(const ToDoData& other) const
 {
@@ -66,26 +131,28 @@ bool ToDoData::operator<(const ToDoData& other) const
 		if (!is_finished) { return deadline_date < other.deadline_date; }
 		else { return deadline_date > other.deadline_date; }
 	}
-	// 3. deadline_type 为 Time 的优先
-	if (deadline_type != other.deadline_type)
-	{
-		return deadline_type == DeadlineType::Time; // Time 排在前面
-	}
+	//// 3. deadline_type 为 Time 的优先
+	//if (deadline_type != other.deadline_type)
+	//{
+	//	return deadline_type == DeadlineType::Time; // Time 排在前面
+	//}
 	// 4. deadline_time 小的优先
 	if (deadline_time != other.deadline_time)
 	{
 		if (!is_finished) { return deadline_time < other.deadline_time; }
 		else { return deadline_time > other.deadline_time; }
 	}
-	// 如果所有条件都相同，则默认返回 false
-	return create_time < other.create_time;
+
+	return create_date_time < other.create_date_time;
 }
 
 const int ToDoRepeatData::text_ptr_offset = 0;
 const int ToDoRepeatData::repeat_type_offset = 8;
-const int ToDoRepeatData::last_add_time_offset = 9;
+const int ToDoRepeatData::last_add_date_time_offset = 9;
 const int ToDoRepeatData::duration_offset = 17;
+const int ToDoRepeatData::deadline_time_offset = 25;
 //const int ToDoRepeatData::this_offset = 64;
+const int ToDoRepeatData::this_size = 64;
 
 std::string ToDoRepeatData::getRepeatTypeString(RepeatType type) const
 {
@@ -109,6 +176,7 @@ std::string ToDoRepeatData::getRepeatTypeString(RepeatType type) const
 
 void ToDoRepeatData::setThing(std::string info_file_path, std::string text_file_path, std::string thing)
 {
+	if (thing == this->thing) { return; }
 	this->thing = thing;
 	std::fstream _text_fs;
 	std::ofstream _info_ofs;
@@ -157,17 +225,17 @@ void ToDoRepeatData::setRepeatType(std::string info_file_path, RepeatType type)
 	_info_ofs.close();
 }
 
-void ToDoRepeatData::setLastAddTime(std::string info_file_path, int64_t time)
+void ToDoRepeatData::setLastAddDateTime(std::string info_file_path, int64_t time)
 {
-	this->last_add_time = time;
+	this->last_add_date_time = time;
 	std::ofstream _info_ofs;
 	_info_ofs.open(
 		info_file_path, std::ios::binary | std::ios::out | std::ios::in
 	);
 
-	_info_ofs.seekp(this->info_ptr + this->last_add_time_offset);
+	_info_ofs.seekp(this->info_ptr + this->last_add_date_time_offset);
 	char size_buf[8] = {};
-	memcpy(&size_buf, &this->last_add_time, 8);
+	memcpy(&size_buf, &this->last_add_date_time, 8);
 	_info_ofs.write(size_buf, 8);
 
 	_info_ofs.close();
@@ -184,6 +252,22 @@ void ToDoRepeatData::setDuration(std::string info_file_path, int64_t duration)
 	_info_ofs.seekp(this->info_ptr + this->duration_offset);
 	char size_buf[8] = {};
 	memcpy(&size_buf, &this->duration, 8);
+	_info_ofs.write(size_buf, 8);
+
+	_info_ofs.close();
+}
+
+void ToDoRepeatData::setDeadlineTime(std::string info_file_path, int64_t time)
+{
+	this->deadline_time = time;
+	std::ofstream _info_ofs;
+	_info_ofs.open(
+		info_file_path, std::ios::binary | std::ios::out | std::ios::in
+	);
+
+	_info_ofs.seekp(this->info_ptr + this->deadline_time_offset);
+	char size_buf[8] = {};
+	memcpy(&size_buf, &this->deadline_time, 8);
 	_info_ofs.write(size_buf, 8);
 
 	_info_ofs.close();
@@ -223,7 +307,7 @@ void ToDoRepeatData::deleteThis(std::string data_file_path)
 bool ToDoRepeatData::isNeedRepeat(int64_t now_time) const
 {
 	QDateTime _temp_now_time = QDateTime::fromMSecsSinceEpoch(now_time);
-	QDateTime _temp_last_time = QDateTime::fromMSecsSinceEpoch(this->last_add_time);
+	QDateTime _temp_last_time = QDateTime::fromMSecsSinceEpoch(this->last_add_date_time);
 
 	switch (this->repeat_type)
 	{
@@ -560,8 +644,9 @@ void GlobalVariables::loadRepeatDataFromFile()
 			memcpy(&_data->text_ptr, info_buf + ToDoRepeatData::text_ptr_offset, 8);
 			memcpy(&type_char, info_buf + ToDoRepeatData::repeat_type_offset, 1);
 			_data->repeat_type = static_cast<ToDoRepeatData::RepeatType>(type_char);
-			memcpy(&_data->last_add_time, info_buf + ToDoRepeatData::last_add_time_offset, 8);
+			memcpy(&_data->last_add_date_time, info_buf + ToDoRepeatData::last_add_date_time_offset, 8);
 			memcpy(&_data->duration, info_buf + ToDoRepeatData::duration_offset, 8);
+			memcpy(&_data->deadline_time, info_buf + ToDoRepeatData::deadline_time_offset, 8);
 		}
 
 		{
@@ -583,12 +668,13 @@ void GlobalVariables::loadRepeatDataFromFile()
 	text_ifs.close();
 }
 
-void GlobalVariables::addRepeatData(std::string thing, ToDoRepeatData::RepeatType type, int64_t duration)
+void GlobalVariables::addRepeatData(std::string thing, ToDoRepeatData::RepeatType type, int64_t duration, int64_t deadline_time)
 {
 	ToDoRepeatData* _data = new ToDoRepeatData();
 	_data->thing = thing;
 	_data->repeat_type = type;
 	_data->duration = duration;
+	_data->deadline_time = deadline_time;
 
 	std::fstream data_fs;
 	std::ofstream info_ofs;
@@ -660,6 +746,7 @@ void GlobalVariables::addRepeatData(std::string thing, ToDoRepeatData::RepeatTyp
 		memcpy(info_buf + ToDoRepeatData::repeat_type_offset, &type_char, 1);
 		//memcpy(info_buf + ToDoRepeatData::last_add_time_offset, 0, 8);
 		memcpy(info_buf + ToDoRepeatData::duration_offset, &_data->duration, 8);
+		memcpy(info_buf + ToDoRepeatData::deadline_time_offset, &_data->deadline_time, 8);
 		info_ofs.write(info_buf, 64);
 	}
 	_data->info_ptr = info_ptr;
@@ -678,10 +765,10 @@ void GlobalVariables::setRepeatDataThing(int index, std::string thing)
 	);
 }
 
-void GlobalVariables::setRepeatDataLastAddTime(int index, int64_t time)
+void GlobalVariables::setRepeatDataLastAddDateTime(int index, int64_t time)
 {
 	if (repeat_data_list.size() <= index) { return; }
-	repeat_data_list[index]->setLastAddTime(this->getRepeatInfoFilePath(), time);
+	repeat_data_list[index]->setLastAddDateTime(this->getRepeatInfoFilePath(), time);
 }
 
 void GlobalVariables::deleteRepeatData(int index)

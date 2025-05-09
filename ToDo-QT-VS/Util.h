@@ -20,11 +20,11 @@ static std::string getUUID(GenderatorUUIDType type = GenderatorUUIDType::timeV7)
 class ToDoData
 {
 public:
-	enum class DeadlineType : char
-	{
-		Day,
-		Time
-	};
+	//enum class DeadlineType : char
+	//{
+	//	Day,
+	//	Time
+	//};
 public:
 	int64_t data_ptr = 0;
 	int64_t info_ptr = 0;
@@ -32,21 +32,30 @@ public:
 	//std::string uuid = "";
 	std::string thing = "";
 	bool is_finished = false;
-	int64_t create_time = 0;
-	DeadlineType deadline_type = DeadlineType::Day;
-	int64_t deadline_date = 0;
-	int64_t deadline_time = 0;
-	int64_t finished_time = 0;
+	int64_t create_date_time = 0;
+	//DeadlineType deadline_type = DeadlineType::Day;
+	int64_t deadline_date = 0;    // 截止日期
+	int64_t deadline_time = 0;    // 截止日期那天的时间
+	int64_t finished_date_time = 0;
+
+	void setThing(
+		std::string info_file_path, std::string text_file_path,
+		std::string thing
+	);
+	void setIsFinished(std::string info_file_path, bool flag);
+	void setFinishedTime(std::string info_file_path, int64_t time);
 
 	bool operator<(const ToDoData& other) const;
 public:
-	static int text_ptr_offset;
-	static int is_finished_offset;
-	static int create_time_offset;
-	static int deadline_type_offset;
-	static int deadline_date_offset;
-	static int deadline_time_offset;
-	static int finished_time_offset;
+	static const int text_ptr_offset;
+	static const int is_finished_offset;
+	static const int create_date_time_offset;
+	//static const int deadline_type_offset;
+	static const int deadline_date_offset;
+	static const int deadline_time_offset;
+	static const int finished_date_time_offset;
+
+	static const int this_size;
 };
 
 class ToDoRepeatData
@@ -65,8 +74,9 @@ public:
 	int64_t text_ptr = 0;
 	RepeatType repeat_type;
 	std::string thing = "";
-	int64_t last_add_time = 0;
+	int64_t last_add_date_time = 0;
 	int64_t duration = 0;
+	int64_t deadline_time = 0;  // 结束那天的时间
 
 	std::string getRepeatTypeString() const
 	{
@@ -79,17 +89,46 @@ public:
 		std::string thing
 	);
 	void setRepeatType(std::string info_file_path, RepeatType type);
-	void setLastAddTime(std::string info_file_path, int64_t time);
+	void setLastAddDateTime(std::string info_file_path, int64_t time);
 	void setDuration(std::string info_file_path, int64_t duration);
+	void setDeadlineTime(std::string info_file_path, int64_t time);
 	void deleteThis(std::string data_file_path);
 
 	bool isNeedRepeat(int64_t now_time) const;
 public:
 	static const int text_ptr_offset;
 	static const int repeat_type_offset;
-	static const int last_add_time_offset;
+	static const int last_add_date_time_offset;
 	static const int duration_offset;
+	static const int deadline_time_offset;
 	//static const int this_offset;
+	static const int this_size;
+};
+
+#include <QDateTimeEdit>
+class NNNDateEditor : public QDateTimeEdit
+{
+public:
+	NNNDateEditor(QWidget* parent = nullptr) :
+		QDateTimeEdit(parent)
+	{
+		this->setDate(QDate::currentDate());
+		this->setDisplayFormat("yyyy/MM/dd");
+		this->setMinimumDate(QDate::currentDate());
+		this->setCalendarPopup(true);
+	}
+};
+
+class NNNTimeEditor : public QTimeEdit
+{
+public:
+	NNNTimeEditor(QWidget* parent = nullptr) :
+		QTimeEdit(parent)
+	{
+		this->setTime(QTime::currentTime());
+		this->setDisplayFormat("hh:mm:ss");
+	}
+
 };
 
 class Config
@@ -274,10 +313,11 @@ public:
 
 	void loadRepeatDataFromFile();
 	void addRepeatData(
-		std::string thing, ToDoRepeatData::RepeatType type, int64_t duration
+		std::string thing, ToDoRepeatData::RepeatType type,
+		int64_t duration, int64_t deadline_time
 	);
 	void setRepeatDataThing(int index, std::string thing);
-	void setRepeatDataLastAddTime(int index, int64_t time);
+	void setRepeatDataLastAddDateTime(int index, int64_t time);
 	void deleteRepeatData(int index);
 	std::vector<ToDoRepeatData*> repeat_data_list;
 

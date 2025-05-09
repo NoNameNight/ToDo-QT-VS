@@ -2,6 +2,7 @@
 #include "TitleDivider.h"
 #include "Util.h"
 
+#include <QApplication>
 #include <functional>
 #include <QStyledItemDelegate>
 #include <QPainter>
@@ -446,13 +447,15 @@ public:
 	HotkeySetWidget(QWidget* parent, Config::HotkeyData* data, QHotkey* hotkey) :
 		QWidget(parent), m_data(data), m_hotkey(hotkey)
 	{
+		QLabel* _warning_icon = new QLabel(this);
+
 		this->setMinimumHeight(30);
 		this->setMinimumWidth(250);
 		{
 			QComboBox* _func_key_box = new QComboBox(this);
 			_func_key_box->setGeometry(0, 0, 140, 30);
 
-			static enum FuncKeyStatue
+			static enum FuncKeyStatue : uint32_t
 			{
 				Ctrl = 0b1,
 				Alt = 0b10,
@@ -475,7 +478,7 @@ public:
 			_func_key_box->blockSignals(false);
 
 			connect(_func_key_box, &QComboBox::currentIndexChanged, this,
-				[parent, _func_key_box, data, hotkey]() {
+				[parent, _func_key_box, data, hotkey, _warning_icon]() {
 					int _statue = _func_key_box->currentData().value<int>();
 					bool _last_ctrl = data->isCtrl();
 					bool _last_alt = data->isAlt();
@@ -510,6 +513,15 @@ public:
 						_func_key_box->blockSignals(false);
 						QMessageBox::warning(parent, "错误", "快捷键已被注册");
 					}
+
+					if (hotkey->isRegistered())
+					{
+						_warning_icon->hide();
+					}
+					else
+					{
+						_warning_icon->show();
+					}
 				}
 			);
 		}
@@ -532,7 +544,7 @@ public:
 			);
 			// 连接 returnPressed 信号
 			connect(_char_box, &QLineEdit::returnPressed, 
-				[parent, _char_box, data, hotkey]() {
+				[parent, _char_box, data, hotkey, _warning_icon]() {
 					_char_box->clearFocus();
 					char _last_char = data->hotkeyChar();
 					data->setHotkeyChar(_char_box->text().toStdString()[0]);
@@ -557,8 +569,29 @@ public:
 						);
 						QMessageBox::warning(parent, "错误", "快捷键已被注册");
 					}
+
+					if (hotkey->isRegistered())
+					{
+						_warning_icon->hide();
+					}
+					else
+					{
+						_warning_icon->show();
+					}
 				}
 			);
+		}
+		{
+			_warning_icon->setPixmap(
+				QApplication::style()->standardIcon(QStyle::SP_MessageBoxWarning).pixmap(16, 16)
+			); // 设置图标大小16x16像素 
+			_warning_icon->setToolTip(tr("热键已被注册")); // 添加悬停提示
+			_warning_icon->move(210, 15 - 8);
+			_warning_icon->hide();
+			if (!hotkey->isRegistered())
+			{
+				_warning_icon->show();
+			}
 		}
 	}
 protected:
@@ -615,6 +648,7 @@ SettingWidget::SettingWidget(QWidget* parent) :
 	m_choice_list->setModel(model);
 	m_choice_list->setCurrentIndex(model->index(0)); 
 
+	// 创建重复任务的设置主页面
 	m_detail_list["重复任务"] = new NNNWidget(this);
 	{
 		QWidget* detail_item = m_detail_list["重复任务"];
@@ -632,14 +666,17 @@ SettingWidget::SettingWidget(QWidget* parent) :
 		QFormLayout* detail_top_item = new QFormLayout(detail_item);
 		RepeatDataListView* detail_repeat_data_list_view = 
 			new RepeatDataListView(detail_item);
+		detail_repeat_data_list_view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
 		//detail_top_item->setRowWrapPolicy(QFormLayout::WrapAllRows);
 		detail_top_item->setLabelAlignment(Qt::AlignRight);
 		detail_top_item->setContentsMargins(
 			detail_item_padding, detail_item_padding,
 			detail_item_padding, detail_item_padding
 		);
+		// 任务添加内容创建
 		{
-			QLineEdit* thing_input_edit = new QLineEdit(detail_item);
+			QLineEdit* thing_input_edit = new QLineEdit(detail_item);          //任务
+
 			thing_input_edit->setStyleSheet(
 				"border: 0;"
 				"border-bottom: 1px solid #A0A0A0;"
@@ -647,7 +684,9 @@ SettingWidget::SettingWidget(QWidget* parent) :
 			);
 			detail_top_item->addRow("任务: ", thing_input_edit);
 
-			QComboBox* repeat_box = new QComboBox(detail_item);
+			QHBoxLayout* repeat_box_layout = new QHBoxLayout(detail_item);
+			repeat_box_layout->setSpacing(10);
+			QComboBox* repeat_box = new QComboBox(detail_item);                //重复
 			repeat_box->setFixedWidth(80);
 			repeat_box->addItem(
 				"每天", static_cast<char>(ToDoRepeatData::RepeatType::EveryDay)
@@ -661,27 +700,70 @@ SettingWidget::SettingWidget(QWidget* parent) :
 			repeat_box->addItem(
 				"每年", static_cast<char>(ToDoRepeatData::RepeatType::EveryYear)
 			);
-			detail_top_item->addRow("重复: ", repeat_box);
-			
-			QSpinBox* duration_box = new QSpinBox(detail_item);
+			//detail_top_item->addRow("重复: ", repeat_box);
+			repeat_box_layout->addWidget(repeat_box);
+			QSpinBox* detail_repeat_date_box = new QSpinBox(detail_item);      //具体重复
+			detail_repeat_date_box->setFixedWidth(90);
+			detail_repeat_date_box->setMinimum(1);
+			detail_repeat_date_box->setMaximum(1);
+			detail_repeat_date_box->setPrefix("第 ");
+			detail_repeat_date_box->setSuffix(" 天");  // 后缀
+			detail_repeat_date_box->setEnabled(false);
+			//detail_top_item->addRow("具体重复: ", detail_repeat_date_box);
+			repeat_box_layout->addWidget(detail_repeat_date_box);
+			detail_top_item->addRow("重复:", repeat_box_layout);
+			connect(repeat_box, &QComboBox::currentIndexChanged, this,
+				[this, repeat_box, detail_repeat_date_box]() {
+					if (repeat_box->currentText() == "每天")
+					{
+						detail_repeat_date_box->setMinimum(1);
+						detail_repeat_date_box->setMaximum(1);
+						detail_repeat_date_box->setEnabled(false);
+					}
+					else if (repeat_box->currentText() == "每周")
+					{
+						detail_repeat_date_box->setMinimum(1);
+						detail_repeat_date_box->setMaximum(7);
+						detail_repeat_date_box->setEnabled(true);
+					}
+					else if (repeat_box->currentText() == "每月")
+					{
+						detail_repeat_date_box->setValue(1);
+						detail_repeat_date_box->setEnabled(false);
+					}
+					else if (repeat_box->currentText() == "每年")
+					{
+						detail_repeat_date_box->setValue(1);
+						detail_repeat_date_box->setEnabled(false);
+					}
+				}
+			);
+
+			QSpinBox* duration_box = new QSpinBox(detail_item);                //持续时间
 			duration_box->setFixedWidth(80);
 			duration_box->setMinimum(1);
 			duration_box->setSuffix(" 天");  // 后缀
 			detail_top_item->addRow("持续时间: ", duration_box);
 
-			QPushButton* add_button = new QPushButton("添加", detail_item);
+			NNNTimeEditor* deadline_time_box = new NNNTimeEditor(detail_item); //结束时间
+			deadline_time_box->setFixedWidth(120);
+			deadline_time_box->setTime(QTime(23, 59, 59));
+			detail_top_item->addRow("结束时间: ", deadline_time_box);
+
+			QPushButton* add_button = new QPushButton("添加", detail_item);    //添加
 			add_button->setFixedWidth(80);
-			connect(add_button, &QPushButton::clicked, this,
-				[thing_input_edit, repeat_box, detail_repeat_data_list_view, duration_box]() {
+			connect(add_button, &QPushButton::clicked, this,   //绑定添加按钮
+				[thing_input_edit, repeat_box, detail_repeat_data_list_view, duration_box, deadline_time_box]() {
 					GlobalVariables* gv = GlobalVariables::instance();
 					int64_t _duration = 
 						static_cast<int64_t>(duration_box->value()) 
 						* 24 * 60 * 60 * 1000;
+					int64_t _deadline_time = deadline_time_box->time().msecsSinceStartOfDay();
 					gv->addRepeatData(
 						thing_input_edit->text().toStdString(),
 						static_cast<ToDoRepeatData::RepeatType>( 
 							repeat_box->currentData().value<char>() 
-						), _duration
+						), _duration, _deadline_time
 					);
 					QStandardItem* _item = new QStandardItem(); 
 					_item->setData(
@@ -697,6 +779,7 @@ SettingWidget::SettingWidget(QWidget* parent) :
 					thing_input_edit->setText("");
 					repeat_box->setCurrentIndex(0);
 					duration_box->setValue(1);
+					deadline_time_box->setTime(QTime(23, 59, 59));
 				}
 			);
 			detail_top_item->addRow(add_button);
@@ -711,6 +794,7 @@ SettingWidget::SettingWidget(QWidget* parent) :
 		);
 		//RepeatDataListView* detail_repeat_data_list_view = new RepeatDataListView(detail_item); 
 		detail_repeat_data_list_view->setModel(new QStandardItemModel());
+		// 重复任务内容显示创建
 		{
 			QStandardItemModel* _model = static_cast<QStandardItemModel*>(
 				detail_repeat_data_list_view->model()
@@ -750,6 +834,7 @@ SettingWidget::SettingWidget(QWidget* parent) :
 		detail_item->hide();
 	}
 	m_detail_list["快捷键"] = new NNNWidget(this);
+	// 快捷键主页面创建
 	{
 		QWidget* detail_item = m_detail_list["快捷键"];
 		detail_item->setGeometry(

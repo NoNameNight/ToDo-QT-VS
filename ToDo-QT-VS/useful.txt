@@ -13,16 +13,16 @@ text.data
 	]
 info.data 
 	[ 128B
-		ptr 8B /*point to text.data*/
-		is_finished 1B
-		create_time 8B
-		deadline_type 1B
-		deadline_date 8B
-		deadline_time 8B
-		finished_time 8B
+		ptr 8B /*point to text.data*/   0
+		is_finished 1B                  8
+		create_date_time 8B             9
+		// deadline_type 1B             17 // no use
+		deadline_date 8B                18
+		deadline_time 8B                26
+		finished_date_time 8B           34
 	]
 
-data.data 
+repeat_data.data 
 	{ 8B
 		size 8B
 	}
@@ -38,28 +38,28 @@ repeat_info.data
 	[ 64B 
 		ptr 8B /*point to repeat_text.data*/
 		repeat_type 1B
-		last_add_time 8B
+		last_add_date_time 8B
 		duration 8B
+		deadline_time 8B
 	]
 
 
 config.data
 	{ 64B
-		window_x 4B					0
-		window_y 4B					4
-		window_width 4B				8
-		window_height 4B			12
-		is_mouse_transparent 1B		16
-		is_top_most 1B				17
+		window_x 4B                 0
+		window_y 4B                 4
+		window_width 4B             8
+		window_height 4B            12
+		is_mouse_transparent 1B     16
+		is_top_most 1B              17
 	}
 	{ 128B
 		[ 8B  //快捷键node
-			is_ctrl 1B
-			is_alt 1B
-			is_shift 1B
-			Placeholding 3B   // 占位
-			char 1B
-			Placeholding 1B   // 占位
+			is_ctrl 1B              0
+			is_alt 1B               1
+			is_shift 1B             2
+			Placeholding 3B         3     // 占位
+			char 1B                 6
 		]
 	}
 	//[ 32B

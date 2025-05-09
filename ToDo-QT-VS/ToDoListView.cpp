@@ -51,8 +51,8 @@ void ToDoDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, 
 	{
 		painter->setPen(QColor(100, 100, 100, 80));
 		bool is_item_out = 
-			itemData->deadline_date < 
-			QDateTime(QDate::currentDate(), QTime(0, 0, 0)).toMSecsSinceEpoch();
+			itemData->deadline_date + itemData->deadline_time <
+			QDateTime::currentDateTime().toMSecsSinceEpoch();
 		if (is_item_out && !itemData->is_finished)
 		{
 			painter->setPen(QColor(255, 0, 0, 80));
@@ -283,12 +283,12 @@ void ToDoListView::itemClicked(const QModelIndex& index)
 		itemData->is_finished = !itemData->is_finished;
 		if (itemData->is_finished)
 		{
-			itemData->finished_time = 
+			itemData->finished_date_time = 
 				QDateTime::currentDateTime().toMSecsSinceEpoch();
 		}
 		else
 		{
-			itemData->finished_time = 0;
+			itemData->finished_date_time = 0;
 		}
 		// 获取模型并发射 dataChanged 信号
 		QAbstractItemModel* model = this->model();
@@ -309,8 +309,8 @@ void ToDoListView::itemClicked(const QModelIndex& index)
 
 		ofs.seekp(itemData->info_ptr + itemData->is_finished_offset);
 		ofs.write((char*)(&itemData->is_finished), 1);
-		ofs.seekp(itemData->info_ptr + itemData->finished_time_offset);
-		ofs.write((char*)(&itemData->finished_time), 8);
+		ofs.seekp(itemData->info_ptr + itemData->finished_date_time_offset);
+		ofs.write((char*)(&itemData->finished_date_time), 8);
 
 		ofs.close();
 		addItemToModel(item, itemData, list_view_model);
