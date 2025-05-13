@@ -1,6 +1,9 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include "ToDoApp.h"
 #include "NSharedMemory.h"
+#include "GlobalVariables.h"
+#include "UIColorManager.h"
+#include "ToDoData.h"
 #include "Util.h"
 
 #include <QApplication>
@@ -18,69 +21,16 @@
 
 #include <QDir>
 
+//#include <QtColorWidgets/color_dialog.hpp>
+
 ToDoApp* w = nullptr;
 
 static void loadResource();
 static void toDoRepeatDataConsolidation();
 static void toDoDataConsolidation();
 
-static void systemTrayIconContext()
-{
-	QMenu menu;
-
-	QAction* setting_act = menu.addAction("设置");
-	QObject::connect(
-		setting_act, &QAction::triggered,
-		w, &ToDoApp::showSettingWidget
-	);
-
-	QAction* add_to_do_data_act = menu.addAction("添加事件");
-	QObject::connect(
-		add_to_do_data_act, &QAction::triggered, 
-		w, &ToDoApp::showToDoDataAddDialog
-	);
-
-	QAction* top_most_change_act = menu.addAction("设置窗口置顶");
-	QObject::connect(top_most_change_act, &QAction::triggered,
-		[]() {
-			w->changeTopMost();
-		}
-	);
-
-	QAction* mouse_transparent_change_act = menu.addAction("设置鼠标穿透");
-	QObject::connect(mouse_transparent_change_act, &QAction::triggered,
-		[]() {
-			w->changeMouseTransparent();
-		}
-	);
-
-	QAction* close_act = menu.addAction("close");
-	QObject::connect(close_act, &QAction::triggered,
-		[]() {
-			QApplication::quit();
-		}
-	);
-	menu.exec(QCursor::pos());
-}
-static void systemTrayIconOnActivated(QSystemTrayIcon::ActivationReason reason)
-{
-	switch (reason)
-	{
-	case QSystemTrayIcon::Unknown:
-		break;
-	case QSystemTrayIcon::Context:
-		systemTrayIconContext();
-		break;
-	case QSystemTrayIcon::DoubleClick:
-		break;
-	case QSystemTrayIcon::Trigger:
-		break;
-	case QSystemTrayIcon::MiddleClick:
-		break;
-	default:
-		break;
-	}
-}
+static void systemTrayIconContext();
+static void systemTrayIconOnActivated(QSystemTrayIcon::ActivationReason reason);
 
 int main(int argc, char* argv[])
 {
@@ -91,6 +41,9 @@ int main(int argc, char* argv[])
 	//{
 	//	return -1;
 	//}
+
+	//color_widgets::ColorDialog cdlg;
+	//cdlg.show();
 
 	{
 		QDir file_dir(
@@ -113,65 +66,75 @@ int main(int argc, char* argv[])
 	Config::instance()->loadConfig();
 	loadResource();
 
+	UIColorManager::instance()->loadFromFile();
+	UIColorManager::instance()->saveToFile();
+
 	toDoRepeatDataConsolidation();
 	toDoDataConsolidation();
 	GlobalVariables::instance()->loadRepeatDataFromFile();
 
-
 	w = new ToDoApp(); 
 
+	// 加载任务数据
 	{
 		GlobalVariables* gv = GlobalVariables::instance();
-		std::ifstream data_ifs;
-		std::ifstream info_ifs;
-		std::ifstream text_ifs;
-		data_ifs.open(gv->getDataFilePath(), std::ios::binary | std::ios::in);
-		info_ifs.open(gv->getInfoFilePath(), std::ios::binary | std::ios::in);
-		text_ifs.open(gv->getTextFilePath(), std::ios::binary | std::ios::in);
-		while (data_ifs.peek() != EOF)
+		std::ifstream _data_ifs;
+		std::ifstream _info_ifs;
+		std::ifstream _text_ifs;
+		_data_ifs.open(gv->getDataFilePath(), std::ios::binary | std::ios::in);
+		_info_ifs.open(gv->getInfoFilePath(), std::ios::binary | std::ios::in);
+		_text_ifs.open(gv->getTextFilePath(), std::ios::binary | std::ios::in);
+
+		char _size_buf[8] = {};
+		int64_t _data_file_size = 0;
+		_data_ifs.read(_size_buf, 8);
+		memcpy(&_data_file_size, _size_buf, 8);
+
+		while (_data_ifs.tellg() < _data_file_size && _data_ifs.peek() != EOF)
 		{
-			uint64_t info_ptr = 0;
-			uint64_t text_ptr = 0;
+			uint64_t _data_ptr = _data_ifs.tellg();
+			uint64_t _info_ptr = 0;
+			uint64_t _text_ptr = 0;
 			char _data[64] = { };
 			char _info[128] = { };
-			data_ifs.read(_data, 64);
-			memcpy(&info_ptr, _data, 8);
+			_data_ifs.read(_data, 64);
+			memcpy(&_info_ptr, _data, 8);
 
-			info_ifs.seekg(info_ptr);
-			info_ifs.read(_info, 128);
-			bool is_finished = false;
-			int64_t create_time = 0;
-			char deadline_type_char = 0;
-			int64_t deadline_date = 0;
-			int64_t deadline_time = 0;
-			int64_t finished_time = 0;
-			memcpy(&text_ptr, _info + ToDoData::text_ptr_offset, 8);
-			memcpy(&is_finished, _info + ToDoData::is_finished_offset, 1);
-			memcpy(&create_time, _info + ToDoData::create_date_time_offset, 8);
+			_info_ifs.seekg(_info_ptr);
+			_info_ifs.read(_info, 128);
+			bool _is_finished = false;
+			int64_t _create_time = 0;
+			char _deadline_type_char = 0;
+			int64_t _deadline_date = 0;
+			int64_t _deadline_time = 0;
+			int64_t _finished_time = 0;
+			memcpy(&_text_ptr, _info + ToDoData::text_ptr_offset, 8);
+			memcpy(&_is_finished, _info + ToDoData::is_finished_offset, 1);
+			memcpy(&_create_time, _info + ToDoData::create_date_time_offset, 8);
 			//memcpy(&deadline_type_char, _info + ToDoData::deadline_type_offset, 1);
-			memcpy(&deadline_date, _info + ToDoData::deadline_date_offset, 8);
-			memcpy(&deadline_time, _info + ToDoData::deadline_time_offset, 8);
-			memcpy(&finished_time, _info + ToDoData::finished_date_time_offset, 8);
+			memcpy(&_deadline_date, _info + ToDoData::deadline_date_offset, 8);
+			memcpy(&_deadline_time, _info + ToDoData::deadline_time_offset, 8);
+			memcpy(&_finished_time, _info + ToDoData::finished_date_time_offset, 8);
 			//ToDoData::DeadlineType deadline_type =
 			//	static_cast<ToDoData::DeadlineType>(deadline_type_char);
 
-			size_t text_size = 0;
+			size_t _text_size = 0;
 			char _text_size_char[8] = { };
 			char _text_buf[1024] = { };
-			text_ifs.seekg(text_ptr);
-			text_ifs.read(_text_size_char, 8);
-			memcpy(&text_size, _text_size_char, 8);
-			text_ifs.read(_text_buf, text_size);
-			std::string thing(_text_buf, text_size);
+			_text_ifs.seekg(_text_ptr);
+			_text_ifs.read(_text_size_char, 8);
+			memcpy(&_text_size, _text_size_char, 8);
+			_text_ifs.read(_text_buf, _text_size);
+			std::string thing(_text_buf, _text_size);
 			w->addToDoListItem(
-				info_ptr, text_ptr,
-				thing, is_finished, create_time,// deadline_type, 
-				deadline_date, deadline_time, finished_time
+				_data_ptr ,_info_ptr, _text_ptr,
+				thing, _is_finished, _create_time,// deadline_type, 
+				_deadline_date, _deadline_time, _finished_time
 			);
 		}
-		data_ifs.close();
-		info_ifs.close();
-		text_ifs.close();
+		_data_ifs.close();
+		_info_ifs.close();
+		_text_ifs.close();
 	}
 
 	// 加载热键
@@ -206,15 +169,14 @@ int main(int argc, char* argv[])
 		);
 	}
 
-	// 设置鼠标事件穿透
-	//w.setWindowFlag(Qt::WindowTransparentForInput);
 	w->show();
 
-	//QIcon icon = QIcon("resource/ico.ico");
 	QIcon icon = QIcon(":/public/resource/ico.ico");
 	QSystemTrayIcon sysTray(icon);
 	sysTray.connect(&sysTray, &QSystemTrayIcon::activated, systemTrayIconOnActivated);
 	sysTray.show();
+
+	w->setWindowIcon(icon);
 
 	return a.exec();
 }
@@ -339,107 +301,118 @@ void toDoDataConsolidation()
 {
 	int64_t out_time_day = 3;
 	GlobalVariables* gv = GlobalVariables::instance();
-	std::ifstream data_ifs;
-	std::ifstream info_ifs;
-	std::ifstream text_ifs;
-	std::ofstream temp_data_ofs;
-	std::ofstream temp_info_ofs;
-	std::ofstream temp_text_ofs;
-	data_ifs.open(gv->getDataFilePath(), std::ios::binary | std::ios::in);
-	info_ifs.open(gv->getInfoFilePath(), std::ios::binary | std::ios::in);
-	text_ifs.open(gv->getTextFilePath(), std::ios::binary | std::ios::in);
-	temp_data_ofs.open(gv->getTempDataFilePath(),
-		std::ios::binary | std::ios::out | std::ios::trunc
-	);
-	temp_info_ofs.open(gv->getTempInfoFilePath(),
-		std::ios::binary | std::ios::out | std::ios::trunc
-	);
-	temp_text_ofs.open(gv->getTempTextFilePath(),
-		std::ios::binary | std::ios::out | std::ios::trunc
-	);
-	while (data_ifs.peek() != EOF)
+	std::ifstream _data_ifs;
+	std::ifstream _info_ifs;
+	std::ifstream _text_ifs;
+	std::ofstream _temp_data_ofs;
+	std::ofstream _temp_info_ofs;
+	std::ofstream _temp_text_ofs;
+	_data_ifs.open(gv->getDataFilePath(), std::ios::binary | std::ios::in);
+	_info_ifs.open(gv->getInfoFilePath(), std::ios::binary | std::ios::in);
+	_text_ifs.open(gv->getTextFilePath(), std::ios::binary | std::ios::in);
+	if (!_data_ifs.is_open() || !_info_ifs.is_open() || !_text_ifs.is_open())
 	{
-		uint64_t info_ptr = 0;
-		uint64_t text_ptr = 0;
-		uint64_t new_info_ptr = 0;
-		uint64_t new_text_ptr = 0;
+		return;
+	}
+	_temp_data_ofs.open(gv->getTempDataFilePath(),
+		std::ios::binary | std::ios::out | std::ios::trunc
+	);
+	_temp_info_ofs.open(gv->getTempInfoFilePath(),
+		std::ios::binary | std::ios::out | std::ios::trunc
+	);
+	_temp_text_ofs.open(gv->getTempTextFilePath(),
+		std::ios::binary | std::ios::out | std::ios::trunc
+	);
+
+	_data_ifs.seekg(0, std::ios::beg); 
+	char _size_buf[8] = {}; 
+	int64_t _data_file_size = 0;  
+	_data_ifs.read(_size_buf, 8); 
+	memcpy(&_data_file_size, _size_buf, 8); 
+	_temp_data_ofs.write(_size_buf, 8); 
+
+	while (_data_ifs.tellg() < _data_file_size && _data_ifs.peek() != EOF)
+	{
+		uint64_t _info_ptr = 0;
+		uint64_t _text_ptr = 0;
+		uint64_t _new_info_ptr = 0;
+		uint64_t _new_text_ptr = 0;
 		char _data[64] = { };
 		char _info[128] = { };
-		data_ifs.read(_data, 64);
-		memcpy(&info_ptr, _data, 8);
+		_data_ifs.read(_data, 64);
+		memcpy(&_info_ptr, _data, 8);
 
-		info_ifs.seekg(info_ptr);
-		info_ifs.read(_info, 128);
-		bool is_finished = false;
-		int64_t create_time = 0;
-		char deadline_type_char = 0;
-		int64_t deadline_date = 0;
-		int64_t deadline_time = 0;
-		int64_t finished_time = 0;
-		memcpy(&text_ptr, _info + ToDoData::text_ptr_offset, 8);
-		memcpy(&is_finished, _info + ToDoData::is_finished_offset, 1);
-		memcpy(&create_time, _info + ToDoData::create_date_time_offset, 8);
+		_info_ifs.seekg(_info_ptr);
+		_info_ifs.read(_info, 128);
+		bool _is_finished = false;
+		int64_t _create_time = 0;
+		char _deadline_type_char = 0;
+		int64_t _deadline_date = 0;
+		int64_t _deadline_time = 0;
+		int64_t _finished_time = 0;
+		memcpy(&_text_ptr, _info + ToDoData::text_ptr_offset, 8);
+		memcpy(&_is_finished, _info + ToDoData::is_finished_offset, 1);
+		memcpy(&_create_time, _info + ToDoData::create_date_time_offset, 8);
 		//memcpy(&deadline_type_char, _info + ToDoData::deadline_type_offset, 1);
-		memcpy(&deadline_date, _info + ToDoData::deadline_date_offset, 8);
-		memcpy(&deadline_time, _info + ToDoData::deadline_time_offset, 8);
-		memcpy(&finished_time, _info + ToDoData::finished_date_time_offset, 8);
+		memcpy(&_deadline_date, _info + ToDoData::deadline_date_offset, 8);
+		memcpy(&_deadline_time, _info + ToDoData::deadline_time_offset, 8);
+		memcpy(&_finished_time, _info + ToDoData::finished_date_time_offset, 8);
 		//ToDoData::DeadlineType deadline_type =
 		//	static_cast<ToDoData::DeadlineType>(deadline_type_char);
 
-		if (is_finished &&
+		if (_is_finished &&
 			QDateTime(QDate::currentDate(), QTime(0, 0, 0))
-			.toMSecsSinceEpoch() - finished_time >
+			.toMSecsSinceEpoch() - _finished_time >
 			out_time_day * 24 * 60 * 60 * 1000)
 		{
 			continue;
 		}
 
-		size_t text_size = 0;
+		size_t _text_size = 0;
 		char _text_size_char[8] = { };
 		char _text_buf[1024] = { };
-		text_ifs.seekg(text_ptr);
-		text_ifs.read(_text_size_char, 8);
-		memcpy(&text_size, _text_size_char, 8);
-		text_ifs.read(_text_buf, text_size);
-		std::string thing(_text_buf, text_size);
+		_text_ifs.seekg(_text_ptr);
+		_text_ifs.read(_text_size_char, 8);
+		memcpy(&_text_size, _text_size_char, 8);
+		_text_ifs.read(_text_buf, _text_size);
+		std::string _thing(_text_buf, _text_size);
 
-		new_info_ptr = temp_info_ofs.tellp();
-		new_text_ptr = temp_text_ofs.tellp();
-		memcpy(_info + ToDoData::text_ptr_offset, &new_text_ptr, 8);
-		memcpy(_data, &new_info_ptr, 8);
+		_new_info_ptr = _temp_info_ofs.tellp();
+		_new_text_ptr = _temp_text_ofs.tellp();
+		memcpy(_info + ToDoData::text_ptr_offset, &_new_text_ptr, 8);
+		memcpy(_data, &_new_info_ptr, 8);
 
-		temp_data_ofs.write(_data, 64);
-		temp_info_ofs.write(_info, 128);
-		temp_text_ofs.write(_text_size_char, 8);
-		temp_text_ofs.write(_text_buf, text_size);
+		_temp_data_ofs.write(_data, 64);
+		_temp_info_ofs.write(_info, 128);
+		_temp_text_ofs.write(_text_size_char, 8);
+		_temp_text_ofs.write(_text_buf, _text_size);
 	}
-	data_ifs.close();
-	info_ifs.close();
-	text_ifs.close();
-	temp_data_ofs.close();
-	temp_info_ofs.close();
-	temp_text_ofs.close();
+	_data_ifs.close();
+	_info_ifs.close();
+	_text_ifs.close();
+	_temp_data_ofs.close();
+	_temp_info_ofs.close();
+	_temp_text_ofs.close();
 
-	int res = 0;
+	int _res = 0;
 	std::remove(gv->getDataFilePath().data());
 	std::remove(gv->getInfoFilePath().data());
 	std::remove(gv->getTextFilePath().data());
-	res = std::rename(
+	_res = std::rename(
 		gv->getTempDataFilePath().data(), gv->getDataFilePath().data()
 	);
 	//if (!res)
 	//{
-	//	qDebug() << std::strerror(errno);
 	//	QMessageBox::warning(nullptr, "Data文件覆盖错误", std::strerror(errno));
 	//}
-	res = std::rename(
+	_res = std::rename(
 		gv->getTempInfoFilePath().data(), gv->getInfoFilePath().data()
 	);
 	//if (!res)
 	//{
 	//	QMessageBox::warning(nullptr, "Info文件覆盖错误", std::strerror(errno));
 	//}
-	res = std::rename(
+	_res = std::rename(
 		gv->getTempTextFilePath().data(), gv->getTextFilePath().data()
 	);
 	//if (!res)
@@ -448,6 +421,63 @@ void toDoDataConsolidation()
 	//}
 }
 
+void systemTrayIconContext()
+{
+	QMenu menu;
+
+	QAction* setting_act = menu.addAction("设置");
+	QObject::connect(
+		setting_act, &QAction::triggered,
+		w, &ToDoApp::showSettingWidget
+	);
+
+	QAction* add_to_do_data_act = menu.addAction("添加任务");
+	QObject::connect(
+		add_to_do_data_act, &QAction::triggered,
+		w, &ToDoApp::showToDoDataAddDialog
+	);
+
+	QAction* top_most_change_act = menu.addAction("设置/取消窗口置顶");
+	QObject::connect(top_most_change_act, &QAction::triggered,
+		[]() {
+			w->changeTopMost();
+		}
+	);
+
+	QAction* mouse_transparent_change_act = menu.addAction("设置/取消鼠标穿透");
+	QObject::connect(mouse_transparent_change_act, &QAction::triggered,
+		[]() {
+			w->changeMouseTransparent();
+		}
+	);
+
+	QAction* close_act = menu.addAction("close");
+	QObject::connect(close_act, &QAction::triggered,
+		[]() {
+			QApplication::quit();
+		}
+	);
+	menu.exec(QCursor::pos());
+}
+void systemTrayIconOnActivated(QSystemTrayIcon::ActivationReason reason)
+{
+	switch (reason)
+	{
+	case QSystemTrayIcon::Unknown:
+		break;
+	case QSystemTrayIcon::Context:
+		systemTrayIconContext();
+		break;
+	case QSystemTrayIcon::DoubleClick:
+		break;
+	case QSystemTrayIcon::Trigger:
+		break;
+	case QSystemTrayIcon::MiddleClick:
+		break;
+	default:
+		break;
+	}
+}
 //#include <iostream>
 //#include <QWidget>
 //#include <QApplication>

@@ -2,6 +2,7 @@
 
 #include "SettingWidget.h"
 #include "ToDoListView.h"
+#include "ToDoData.h"
 #include "Util.h"
 
 #include <QWidget>
@@ -19,7 +20,7 @@ public:
 	void changeTopMost();
 	void changeMouseTransparent();
 	void addToDoListItem(
-		int64_t info_ptr, int64_t text_ptr,
+		int64_t data_ptr, int64_t info_ptr, int64_t text_ptr,
 		std::string thing, bool is_finished, 
 		int64_t create_time,
 		//ToDoData::DeadlineType deadline_type,

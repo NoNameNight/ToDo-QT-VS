@@ -18,7 +18,6 @@ public:
 		setColor(m_color);
 		m_title_label->setAlignment(Qt::AlignCenter);
 		this->resize(this->size().width(), m_title_label->sizeHint().height());
-		//qDebug() << this->size() << " " << m_title_label->sizeHint().height();
 		m_title_label->move(30, 0);
 		//this->setStyleSheet("background-color: red;");
 		//m_title_label->setStyleSheet("background-color: green;");

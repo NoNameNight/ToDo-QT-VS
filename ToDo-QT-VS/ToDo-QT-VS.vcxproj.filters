@@ -21,6 +21,9 @@
       <UniqueIdentifier>{639EADAA-A684-42e4-A9AD-28FC9BCB8F7C}</UniqueIdentifier>
       <Extensions>ts</Extensions>
     </Filter>
+    <Filter Include="SettingWidget">
+      <UniqueIdentifier>{4e880074-2ea2-47fe-a4c7-7fbde4e3f098}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ToDoApp.cpp">
@@ -38,6 +41,27 @@
     <ClCompile Include="SettingWidget.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SettingWidget\SettingRepeatTaskWidget.cpp">
+      <Filter>SettingWidget</Filter>
+    </ClCompile>
+    <ClCompile Include="SettingWidget\SettingShortcutKeysWidget.cpp">
+      <Filter>SettingWidget</Filter>
+    </ClCompile>
+    <ClCompile Include="SettingWidget\RepeatDataListView.cpp">
+      <Filter>SettingWidget</Filter>
+    </ClCompile>
+    <ClCompile Include="ToDoRepeatData.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GlobalVariables.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ToDoData.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SettingWidget\SettingMainUIColorWidget.cpp">
+      <Filter>SettingWidget</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="ToDoApp.h">
@@ -54,10 +78,40 @@
     <ClInclude Include="SettingWidget.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="NSharedMemory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="NNNWidget.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SettingWidget\SettingShortcutKeysWidget.h">
+      <Filter>SettingWidget</Filter>
+    </ClInclude>
+    <ClInclude Include="SettingWidget\SettingRepeatTaskWidget.h">
+      <Filter>SettingWidget</Filter>
+    </ClInclude>
+    <ClInclude Include="SettingWidget\RepeatDataListView.h">
+      <Filter>SettingWidget</Filter>
+    </ClInclude>
+    <ClInclude Include="SettingWidget\HotkeySetWidget.h">
+      <Filter>SettingWidget</Filter>
+    </ClInclude>
     <ClInclude Include="TitleDivider.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="NSharedMemory.h">
+    <ClInclude Include="ToDoRepeatData.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GlobalVariables.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ToDoData.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SettingWidget\SettingMainUIColorWidget.h">
+      <Filter>SettingWidget</Filter>
+    </ClInclude>
+    <ClInclude Include="UIColorManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

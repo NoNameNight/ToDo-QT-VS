@@ -1,11 +1,15 @@
+#include "GlobalVariables.h"
+#include "UIColorManager.h"
 #include "ToDoListView.h"
+#include "ToDoData.h"
 #include "Util.h"
 
-#include <QStyledItemDelegate>
 #include <QStandardItemModel>
 #include <QLineEdit>
 #include <QPainter>
 #include <QDateTime>
+#include <QMessageBox>
+#include <QAbstractButton> 
 
 class ToDoDelegate : public QStyledItemDelegate
 {
@@ -33,48 +37,125 @@ public:
 		QWidget* editor, QAbstractItemModel* model,
 		const QModelIndex& index
 	) const override;
+
+	void setOkBoxWidth(int width)
+	{
+		m_ok_box_width = width;
+	}
+	void setOkRectWidth(int width)
+	{
+		m_ok_rect_width = width;
+	}
+	void setTimeBoxWidth(int width)
+	{
+		m_time_box_width = width;
+	}
+	void setDeleteBoxWidth(int width)
+	{
+		m_delete_box_width = width;
+	}
+	void setDeletePngWidth(int width)
+	{
+		m_delete_box_width = width;
+	}
+public:
+	QRect getThingBoxRect(QRect option_rect) const
+	{
+		return 	QRect(
+			option_rect.x() + m_ok_box_width, option_rect.y(), 
+			option_rect.width() - m_ok_box_width - 
+			m_time_box_width - m_delete_box_width, 
+			option_rect.height()
+		);
+	}
+	QRect getOkRectRect(QRect option_rect) const
+	{
+		int ok_rect_offset = (m_ok_box_width - m_ok_rect_width) / 2;
+		return 	QRect(
+			option_rect.x() + ok_rect_offset,
+			option_rect.y() + ok_rect_offset,
+			m_ok_rect_width, m_ok_rect_width
+		);
+	}
+	QRect getTimeBoxRect(QRect option_rect) const
+	{
+		return QRect(
+			option_rect.width() - m_time_box_width - m_delete_box_width + 5,
+			option_rect.y(),
+			m_time_box_width - 5, option_rect.height()
+		);
+	}
+	QRect getDeletePngRect(QRect option_rect) const
+	{ 
+		int delete_png_hpadding = (m_delete_box_width - m_delete_png_width) / 2;
+		int delete_png_vpadding = (option_rect.height() - m_delete_png_width) / 2;
+		return QRect(
+			option_rect.width() - m_delete_box_width + delete_png_hpadding,
+			option_rect.y() + delete_png_vpadding,
+			m_delete_png_width, m_delete_png_width
+		);
+	}
 private:
-	int ok_container = 40;
-	int time_container = 75;
+	int m_ok_box_width = 40;
+	int m_ok_rect_width = 14; //复选框的宽度
+	int m_time_box_width = 75;
+	int m_delete_box_width = 20;
+	int m_delete_png_width = 15;
 };
 
 
 void ToDoDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
 {
 	painter->save();
-	//qDebug() << option.rect;
 
 	QVariant var = index.data(Qt::UserRole + 1);
 	ToDoData* itemData = reinterpret_cast<ToDoData*>(var.value<std::uintptr_t>());
+	QColor _temp_pen_color;
+	QColor _temp_brush_color;
+
+	UIColorManager* _ui_color_manager = UIColorManager::instance();
 
 	/// background draw
 	{
-		painter->setPen(QColor(100, 100, 100, 80));
+		//_temp_pen_color = QColor(100, 100, 100, 80);
+		_temp_pen_color = _ui_color_manager->getColor("main_task_border");
 		bool is_item_out = 
 			itemData->deadline_date + itemData->deadline_time <
 			QDateTime::currentDateTime().toMSecsSinceEpoch();
 		if (is_item_out && !itemData->is_finished)
 		{
-			painter->setPen(QColor(255, 0, 0, 80));
+			//_temp_pen_color = QColor(255, 0, 0, 80);
+			_temp_pen_color = 
+				_ui_color_manager->getColor("main_task_border_out");
 		}
+		painter->setPen(_temp_pen_color); 
 		painter->drawLine(option.rect.topLeft(), option.rect.topRight());
 		painter->drawLine(option.rect.bottomLeft(), option.rect.bottomRight());
 
 		if (option.state.testFlag(QStyle::State_MouseOver))
 		{
-			painter->setBrush(QColor(100, 100, 100, 100));
+			//_temp_brush_color = QColor(100, 100, 100, 100);
+			_temp_brush_color = 
+				_ui_color_manager->getColor("main_task_bg_hover"); 
 			if (is_item_out && !itemData->is_finished)
 			{
-				painter->setBrush(QColor(200, 0, 0, 100));
+				//_temp_brush_color = QColor(200, 0, 0, 100);
+				_temp_brush_color =
+					_ui_color_manager->getColor("main_task_bg_out_hover");
 			}
+			painter->setBrush(_temp_brush_color);
 		}
 		else
 		{
-			painter->setBrush(QColor(0, 0, 0, 0));
+			//_temp_brush_color = QColor(0, 0, 0, 0); 
+			_temp_brush_color = _ui_color_manager->getColor("main_task_bg");
 			if (is_item_out && !itemData->is_finished)
 			{
-				painter->setBrush(QColor(100, 0, 0, 100));
+				//_temp_brush_color = QColor(100, 0, 0, 100);
+				_temp_brush_color =
+					_ui_color_manager->getColor("main_task_bg_out");
 			}
+			painter->setBrush(_temp_brush_color);
 		}
 		painter->drawRect(option.rect);
 	}
@@ -82,30 +163,24 @@ void ToDoDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, 
 
 	/// is ok draw
 	{
-		int ok_rect_width = 14;
-		int ok_rect_offset = (ok_container - ok_rect_width) / 2;
-		QRect ok_rect(
-			option.rect.x() + ok_rect_offset,
-			option.rect.y() + ok_rect_offset,
-			ok_rect_width, ok_rect_width
-		);
+		QRect ok_rect = getOkRectRect(option.rect);
+		_temp_pen_color = _ui_color_manager->getColor("checkbox_border");
 		if (itemData->is_finished)
 		{
-			painter->setPen(QColor(100, 100, 100, 100));
-			painter->setBrush(QColor(100, 100, 100, 150));
+			_temp_brush_color = _ui_color_manager->getColor("checkbox_bg_ok");
 		}
 		else
 		{
-			painter->setPen(QColor(100, 100, 100, 100));
-			painter->setBrush(QColor(200, 200, 200, 50));
+			_temp_brush_color = _ui_color_manager->getColor("ckeckbox_bg");
 		}
-		//QPoint circle_center(option.rect.x() + 20, option.rect.y() + 20);
-		//painter->drawEllipse(ok_rect); 
+		painter->setPen(_temp_pen_color);
+		painter->setBrush(_temp_brush_color);
 		painter->drawRoundedRect(ok_rect, 2, 2);
 
 		if (itemData->is_finished)
 		{
-			painter->setPen(QColor(200, 200, 200, 255));
+			_temp_pen_color = _ui_color_manager->getColor("checkbox_check");
+			painter->setPen(_temp_pen_color);
 			painter->drawText(
 				option.rect.x() + 10, option.rect.y() + 10,
 				20, 20, Qt::AlignCenter, "✔"
@@ -114,13 +189,7 @@ void ToDoDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, 
 	}
 	/// text draw
 	{
-		//QRect text_rect = option.rect;
-		//text_rect.setX(text_rect.x() + 40);
-		QRect text_rect(
-			option.rect.x() + ok_container, option.rect.y(),
-			option.rect.width() - ok_container - time_container,
-			option.rect.height()
-		);
+		QRect text_rect = getThingBoxRect(option.rect);
 
 		if (itemData->is_finished)
 		{
@@ -134,7 +203,8 @@ void ToDoDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, 
 			itemData->thing.data(),
 			Qt::ElideRight, text_rect.width()
 		);
-		painter->setPen(QColor(255, 255, 255, 200));
+		_temp_pen_color = _ui_color_manager->getColor("main_task_task");
+		painter->setPen(_temp_pen_color);
 		painter->drawText(
 			text_rect,
 			Qt::AlignLeft | Qt::AlignVCenter | Qt::ElideRight,
@@ -143,11 +213,9 @@ void ToDoDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, 
 	}
 	// time draw
 	{
-		QRect time_rect(
-			option.rect.width() - time_container + 5, option.rect.y(),
-			time_container - 5, option.rect.height()
-		);
-		painter->setPen(QColor(255, 255, 255, 200));
+		QRect time_rect = getTimeBoxRect(option.rect);
+		_temp_pen_color = _ui_color_manager->getColor("main_task_date");
+		painter->setPen(_temp_pen_color);
 		QString time_text = 
 			QDateTime::fromMSecsSinceEpoch(itemData->deadline_date)
 			.toString("yyyy/MM/dd");
@@ -158,6 +226,8 @@ void ToDoDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, 
 			time_text
 		);
 	}
+	QRect delete_png_rect = getDeletePngRect(option.rect);
+	painter->drawPixmap(delete_png_rect, *GlobalVariables::instance()->delete_png);
 
 	painter->restore();
 	//QStyledItemDelegate::paint(painter, option, index);
@@ -171,8 +241,8 @@ QWidget* ToDoDelegate::createEditor(QWidget* parent, const QStyleOptionViewItem&
 	int mouse_x = parent->mapFromGlobal(QCursor::pos()).x(); 
 	int mouse_y = parent->mapFromGlobal(QCursor::pos()).y(); 
 	QRect valid_rect(
-		option.rect.x() + ok_container, option.rect.y(),
-		option.rect.width() - ok_container - time_container, 
+		option.rect.x() + m_ok_box_width, option.rect.y(),
+		option.rect.width() - m_ok_box_width - m_time_box_width, 
 		option.rect.height()
 	);
 	bool is_mouse_in_valid = valid_rect.contains(mouse_x, mouse_y);
@@ -185,8 +255,8 @@ void ToDoDelegate::updateEditorGeometry(QWidget* editor, const QStyleOptionViewI
 {
 	editor->setStyleSheet("border-width:0;border-style:outset;");
 	QRect editor_rect(
-		option.rect.x() + ok_container, option.rect.y() + 1,
-		option.rect.width() - ok_container - time_container, 
+		option.rect.x() + m_ok_box_width, option.rect.y() + 1,
+		option.rect.width() - m_ok_box_width - m_time_box_width, 
 		option.rect.height() - 2
 	);
 	editor->setGeometry(editor_rect);
@@ -221,7 +291,8 @@ ToDoListView::ToDoListView(QWidget* parent) :
 	connect(this, &ToDoListView::clicked, this, &ToDoListView::itemClicked);
 	connect(this, &ToDoListView::doubleClicked, this, &ToDoListView::itemDoubleClicked);
 
-	ToDoDelegate* _delegate = new ToDoDelegate;
+	m_delegate = new ToDoDelegate;
+	ToDoDelegate* _delegate = static_cast<ToDoDelegate*>(m_delegate);
 	this->setItemDelegate(_delegate);
 
 	this->setStyleSheet("QListView { background-color: transparent; }");
@@ -261,24 +332,20 @@ void ToDoListView::itemClicked(const QModelIndex& index)
 	//QStandardItemModel* model = static_cast<QStandardItemModel*>(this->model());
 	//QStandardItem* item = model->itemFromIndex(index);
 	//item->data(Qt::UserRole + 1); 
-	QVariant var = index.data(Qt::UserRole + 1);
+	QVariant _var = index.data(Qt::UserRole + 1);
 		
-	ToDoData* itemData = reinterpret_cast<ToDoData*>(var.value<std::uintptr_t>());
+	ToDoData* itemData = reinterpret_cast<ToDoData*>(_var.value<std::uintptr_t>());
 
-	QRect item_rect = this->visualRect(index);
-	int ok_rect_width = 14;
-	int of_rect_offset = (40 - ok_rect_width) / 2;
-	QRect ok_rect(
-		item_rect.x() + of_rect_offset,
-		item_rect.y() + of_rect_offset,
-		ok_rect_width, ok_rect_width
-	);
+	QRect _item_rect = this->visualRect(index);
+	QRect _ok_rect = 
+		static_cast<ToDoDelegate*>(m_delegate)->getOkRectRect(_item_rect);
+	QRect _delete_png_rect =
+		static_cast<ToDoDelegate*>(m_delegate)->getDeletePngRect(_item_rect);
 
-	int mouse_x = this->mapFromGlobal(QCursor::pos()).x();
-	int mouse_y = this->mapFromGlobal(QCursor::pos()).y();
-	if (mouse_x >= ok_rect.left() && mouse_x <= ok_rect.right() &&
-		mouse_y >= ok_rect.top() && mouse_y <= ok_rect.bottom()
-		)
+	int _mouse_x = this->mapFromGlobal(QCursor::pos()).x();
+	int _mouse_y = this->mapFromGlobal(QCursor::pos()).y();
+	
+	if(_ok_rect.contains(_mouse_x, _mouse_y))
 	{
 		itemData->is_finished = !itemData->is_finished;
 		if (itemData->is_finished)
@@ -295,24 +362,52 @@ void ToDoListView::itemClicked(const QModelIndex& index)
 		if (model) {
 			emit model->dataChanged(index, index);
 		}
-		QStandardItemModel* list_view_model = 
+		QStandardItemModel* _list_view_model = 
 			static_cast<QStandardItemModel*>(this->model());
-		QStandardItem* item = list_view_model->itemFromIndex(index);
-		list_view_model->takeRow(index.row());
+		QStandardItem* _item = _list_view_model->itemFromIndex(index);
+		_list_view_model->takeRow(index.row());
 
 		GlobalVariables* gv = GlobalVariables::instance();
-		std::ofstream ofs;
-		ofs.open(
+		std::ofstream _ofs;
+		_ofs.open(
 			gv->getInfoFilePath(),
 			std::ios::binary | std::ios::out | std::ios::in
 		);
 
-		ofs.seekp(itemData->info_ptr + itemData->is_finished_offset);
-		ofs.write((char*)(&itemData->is_finished), 1);
-		ofs.seekp(itemData->info_ptr + itemData->finished_date_time_offset);
-		ofs.write((char*)(&itemData->finished_date_time), 8);
+		_ofs.seekp(itemData->info_ptr + itemData->is_finished_offset);
+		_ofs.write((char*)(&itemData->is_finished), 1);
+		_ofs.seekp(itemData->info_ptr + itemData->finished_date_time_offset);
+		_ofs.write((char*)(&itemData->finished_date_time), 8);
 
-		ofs.close();
-		addItemToModel(item, itemData, list_view_model);
+		_ofs.close();
+		addItemToModel(_item, itemData, _list_view_model);
+	}
+	else if (_delete_png_rect.contains(_mouse_x, _mouse_y))
+	{
+		static bool _is_first = true;
+		// 创建消息框并设置父窗口、标题和内容
+		static QMessageBox _msg_box(this->parentWidget());
+		if (_is_first)
+		{
+			_is_first = false;
+			_msg_box.setWindowTitle("警告");
+			_msg_box.setIcon(QMessageBox::Warning);
+			_msg_box.setText("删除将无法恢复");
+			_msg_box.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+			_msg_box.button(QMessageBox::Ok)->setText("确认");
+			_msg_box.button(QMessageBox::Cancel)->setText("取消");
+		}
+		int _ret = _msg_box.exec();
+
+		if (_ret == QMessageBox::Ok)
+		{
+
+			itemData->deleteThis(
+				GlobalVariables::instance()->getDataFilePath()
+			);
+			QStandardItemModel* list_view_model =
+				static_cast<QStandardItemModel*>(this->model());
+			list_view_model->takeRow(index.row()); 
+		}
 	}
 }

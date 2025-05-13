@@ -41,6 +41,7 @@ repeat_info.data
 		last_add_date_time 8B
 		duration 8B
 		deadline_time 8B
+		detail_repeat_date 4B
 	]
 
 
@@ -62,11 +63,3 @@ config.data
 			char 1B                 6
 		]
 	}
-	//[ 32B
-	//	is_ctrl 1B
-	//	is_alt 1B
-	//	is_shift 1B
-	//	Placeholding 5B   // 占位
-	//	mouse_transparent_char 1B
-	//	top_most_char 1B
-	//]

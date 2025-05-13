@@ -107,20 +107,20 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\thirdparty\QHotKey\include;..\thirdparty\jsoncpp\include;..\thirdparty\boost\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\thirdparty\Qt-Color-Widgets\include;..\thirdparty\QHotKey\include;..\thirdparty\jsoncpp\include;..\thirdparty\boost\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>..\thirdparty\QHotKey\lib\x64\Debug;..\thirdparty\jsoncpp\lib\x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>jsoncpp.lib;qhotkey.lib;user32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\thirdparty\Qt-Color-Widgets\static_lib\x64\Debug;..\thirdparty\QHotKey\lib\x64\Debug;..\thirdparty\jsoncpp\lib\x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>QtColorWidgets.lib;jsoncpp.lib;qhotkey.lib;user32.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\thirdparty\QHotKey\include;..\thirdparty\jsoncpp\include;..\thirdparty\boost\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\thirdparty\Qt-Color-Widgets\include;..\thirdparty\QHotKey\include;..\thirdparty\jsoncpp\include;..\thirdparty\boost\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>..\thirdparty\QHotKey\lib\x64\Release;..\thirdparty\jsoncpp\lib\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>jsoncpp.lib;qhotkey.lib;user32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\thirdparty\Qt-Color-Widgets\static_lib\x64\Release;..\thirdparty\QHotKey\lib\x64\Release;..\thirdparty\jsoncpp\lib\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>QtColorWidgets.lib;jsoncpp.lib;qhotkey.lib;user32.lib</AdditionalDependencies>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
   </ItemDefinitionGroup>
@@ -181,6 +181,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="GlobalVariables.cpp" />
     <ClCompile Include="main.cpp">
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
@@ -191,19 +192,35 @@
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
     </ClCompile>
+    <ClCompile Include="SettingWidget\SettingMainUIColorWidget.cpp" />
+    <ClCompile Include="SettingWidget\RepeatDataListView.cpp" />
+    <ClCompile Include="SettingWidget\SettingShortcutKeysWidget.cpp" />
+    <ClCompile Include="SettingWidget\SettingRepeatTaskWidget.cpp" />
     <ClCompile Include="SettingWidget.cpp" />
     <ClCompile Include="ToDoApp.cpp" />
+    <ClCompile Include="ToDoData.cpp" />
     <ClCompile Include="ToDoListView.cpp" />
+    <ClCompile Include="ToDoRepeatData.cpp" />
     <ClCompile Include="Util.cpp" />
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="ToDoApp.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="GlobalVariables.h" />
+    <ClInclude Include="SettingWidget\SettingMainUIColorWidget.h" />
+    <ClInclude Include="SettingWidget\HotkeySetWidget.h" />
+    <ClInclude Include="NNNWidget.h" />
     <ClInclude Include="NSharedMemory.h" />
+    <ClInclude Include="SettingWidget\RepeatDataListView.h" />
+    <ClInclude Include="SettingWidget\SettingShortcutKeysWidget.h" />
+    <ClInclude Include="SettingWidget\SettingRepeatTaskWidget.h" />
     <ClInclude Include="SettingWidget.h" />
     <ClInclude Include="TitleDivider.h" />
+    <ClInclude Include="ToDoData.h" />
     <ClInclude Include="ToDoListView.h" />
+    <ClInclude Include="ToDoRepeatData.h" />
+    <ClInclude Include="UIColorManager.h" />
     <ClInclude Include="Util.h" />
   </ItemGroup>
   <ItemGroup>

@@ -1,4 +1,6 @@
 #include "ToDoApp.h"
+#include "GlobalVariables.h"
+#include "UIColorManager.h"
 
 #include <QMouseEvent>
 #include <QStringListModel>
@@ -18,6 +20,10 @@
 ToDoApp::ToDoApp(QWidget* parent) :
 	QWidget(parent)
 { 
+	GlobalVariables::instance()->update_main_window_ui = [this]() {
+		this->update();
+	};
+
 	this->setWindowFlag(Qt::FramelessWindowHint);
 	this->setWindowFlag(Qt::Tool);
 	this->setAttribute(Qt::WA_TranslucentBackground);
@@ -119,10 +125,11 @@ void ToDoApp::changeMouseTransparent()
 	this->show();
 }
 
-void ToDoApp::addToDoListItem(int64_t info_ptr, int64_t text_ptr, std::string thing, bool is_finished, int64_t create_time, int64_t deadline_date, int64_t deadline_time, int64_t finished_time)
+void ToDoApp::addToDoListItem(int64_t data_ptr, int64_t info_ptr, int64_t text_ptr, std::string thing, bool is_finished, int64_t create_time, int64_t deadline_date, int64_t deadline_time, int64_t finished_time)
 {
 	QStandardItem* _item = new QStandardItem();
 	ToDoData* _data = new ToDoData();
+	_data->data_ptr = data_ptr;
 	_data->text_ptr = text_ptr;
 	_data->info_ptr = info_ptr;
 	_data->thing = thing;
@@ -159,28 +166,31 @@ void ToDoApp::addToDoListItem(std::string thing, bool is_finished, int64_t deadl
 	int64_t create_time = QDateTime::currentDateTime().toMSecsSinceEpoch();
 
 	GlobalVariables* gv = GlobalVariables::instance();
-	uint64_t text_ptr = 0;
-	uint64_t info_ptr = 0;
+	uint64_t _data_ptr = 0;
+	uint64_t _text_ptr = 0;
+	uint64_t _info_ptr = 0;
+	int64_t _data_file_size = 0;
+	char _size_buf[8] = {};
 
 	{
-		std::ofstream text_ofs;
-		text_ofs.open(gv->getTextFilePath(), std::ios::binary | std::ios::app);
-		text_ofs.seekp(0, std::ios::end);
-		text_ptr = text_ofs.tellp();
+		std::ofstream _text_ofs;
+		_text_ofs.open(gv->getTextFilePath(), std::ios::binary | std::ios::app);
+		_text_ofs.seekp(0, std::ios::end);
+		_text_ptr = _text_ofs.tellp();
 		size_t text_size = thing.size();
 		char text_size_char[8] = { };
 		memcpy(text_size_char, &text_size, 8);
-		text_ofs.write(text_size_char, 8);
-		text_ofs.write(thing.data(), thing.size());
-		text_ofs.close();
+		_text_ofs.write(text_size_char, 8);
+		_text_ofs.write(thing.data(), thing.size());
+		_text_ofs.close();
 	}
 	{
-		std::ofstream info_ofs;
-		info_ofs.open(gv->getInfoFilePath(), std::ios::binary | std::ios::app);
-		info_ofs.seekp(0, std::ios::end);
-		info_ptr = info_ofs.tellp();
+		std::ofstream _info_ofs;
+		_info_ofs.open(gv->getInfoFilePath(), std::ios::binary | std::ios::app);
+		_info_ofs.seekp(0, std::ios::end);
+		_info_ptr = _info_ofs.tellp();
 		char _info[128] = { };
-		memcpy(_info + ToDoData::text_ptr_offset, &text_ptr, 8);
+		memcpy(_info + ToDoData::text_ptr_offset, &_text_ptr, 8);
 		memcpy(_info + ToDoData::is_finished_offset, &is_finished, 1);
 		memcpy(_info + ToDoData::create_date_time_offset, &create_time, 8);
 		//char deadline_type_char = static_cast<char>(deadline_type);
@@ -188,57 +198,52 @@ void ToDoApp::addToDoListItem(std::string thing, bool is_finished, int64_t deadl
 		memcpy(_info + ToDoData::deadline_date_offset, &deadline_date, 8);
 		memcpy(_info + ToDoData::deadline_time_offset, &deadline_time, 8);
 		memcpy(_info + ToDoData::finished_date_time_offset, &finished_time, 8);
-		info_ofs.write(_info, 128);
-		info_ofs.close();
+		_info_ofs.write(_info, 128);
+		_info_ofs.close();
 	}
 	{
-		std::ofstream data_ofs;
-		data_ofs.open(gv->getDataFilePath(), std::ios::binary | std::ios::app);
-		char _data[64] = { };
-		memcpy(_data, &info_ptr, 8);
-		data_ofs.write(_data, 64);
-		data_ofs.close();
+		std::fstream _data_fs;
+		_data_fs.open(gv->getDataFilePath(), std::ios::binary | std::ios::app);
+		_data_fs.close(); 
+		_data_fs.open( 
+			gv->getDataFilePath(),
+			std::ios::binary | std::ios::out | std::ios::in 
+		);
+
+		_data_fs.seekp(0, std::ios::end);
+		if (_data_fs.tellp() == 0)
+		{
+			int64_t _size = 8;
+			char _size_str[8] = {};
+			memcpy(_size_str, &_size, 8);
+			_data_fs.write(_size_str, 8);
+		}
+		_data_fs.seekg(0, std::ios::beg);
+		_data_fs.read(_size_buf, 8);
+		memcpy(&_data_file_size, _size_buf, 8);
+		_data_ptr = _data_file_size;
+
+		_data_fs.seekp(_data_file_size);
+
+		char _data_buf[64] = {}; 
+		memcpy(_data_buf, &_info_ptr, 8); 
+		_data_fs.write(_data_buf, 64); 
+
+		_data_file_size += 64; 
+		memset(_size_buf, 0, 8); 
+		memcpy(_size_buf, &_data_file_size, 8); 
+		_data_fs.seekp(0, std::ios::beg); 
+		_data_fs.write(_size_buf, 8); 
+
+		_data_fs.close();
 	}
 
 	addToDoListItem(
-		info_ptr, text_ptr, 
+		_data_ptr ,_info_ptr, _text_ptr, 
 		thing, is_finished, 
 		create_time,// deadline_type, 
 		deadline_date, deadline_time, finished_time
 	);
-
-	//QStandardItem* _item = new QStandardItem();
-	//ToDoData* _data = new ToDoData();
-	//_data->text_ptr = text_ptr;
-	//_data->info_ptr = info_ptr;
-	//_data->thing = thing;
-	//_data->is_finished = is_finished;
-	//_data->create_time = create_time;
-	//_data->deadline_type = deadline_type;
-	//_data->deadline_date = deadline_date;
-	//_data->deadline_time = deadline_time;
-	//_data->finished_time = finished_time;
-	//_item->setData(reinterpret_cast<std::uintptr_t>(_data), Qt::UserRole + 1);
-
-
-	//QStandardItemModel* list_view_model = 
-	//	static_cast<QStandardItemModel*>(m_list_view->model());
-	//int _idx = 0; 
-	//while (_idx < list_view_model->rowCount())
-	//{
-	//	QStandardItem* item = list_view_model->item(_idx);
-	//	if (item)
-	//	{
-	//		QVariant var = item->data(Qt::UserRole + 1);
-	//		ToDoData* itemData = reinterpret_cast<ToDoData*>(var.value<std::uintptr_t>());
-	//		if (*_data < *itemData)
-	//		{
-	//			break;
-	//		}
-	//	}
-	//	_idx++;
-	//}
-	//list_view_model->insertRow(_idx, _item);
 }
 
 void ToDoApp::mousePressEvent(QMouseEvent* ev)
@@ -477,57 +482,86 @@ void ToDoApp::resizeEvent(QResizeEvent* event)
 void ToDoApp::paintEvent(QPaintEvent* event)
 {
 	QPainter painter(this);
+	Config* _config = Config::instance();
 
 	// 设置抗锯齿
 	painter.setRenderHint(QPainter::Antialiasing);
 
+	//Config::UIColor* _temp_color = nullptr;
+	UIColorManager* _ui_color_manager = UIColorManager::instance();
 	// 设置背景颜色
-	QColor appColor(100, 100, 100, 100);
-	painter.setBrush(appColor);
-	painter.setPen(appColor);
+	//_temp_color = _config->getUIColor("main_bg");
+	//QColor app_color(100, 100, 100, 100);
+	//if (_temp_color)
+	//{
+	//	app_color = UIColor2QColor(_temp_color);
+	//	_temp_color = nullptr;
+	//}
+
+	QColor app_color;
+	app_color = _ui_color_manager->getColor("main_bg");
+	if (!app_color.isValid())
+	{
+		fatalError("need main_bg");
+	}
+	painter.setBrush(app_color);
+	painter.setPen(app_color);
 
 	// 设置圆角矩形
 	QRect rect = this->rect();
 	int radius = 5; // 圆角半径
 	painter.drawRoundedRect(rect, radius, radius);
 
-	painter.save();
-	
-	painter.setPen(QColor(255, 255, 255, 170));
-	painter.drawText(
-		1, 0, this->width() - 2, m_top_box_height,
-		Qt::AlignCenter, QTime::currentTime().toString("hh:mm:ss")
-	);
+	{
+		app_color = _ui_color_manager->getColor("main_time");
+		if (!app_color.isValid())
+		{
+			fatalError("need main_time");
+		}
+		painter.setPen(app_color);
+		painter.drawText(
+			1, 0, this->width() - 2, m_top_box_height,
+			Qt::AlignCenter, QTime::currentTime().toString("hh:mm:ss")
+		);
 
-	painter.setPen(QColor(255, 255, 255, 150));
-	painter.setFont(m_now_year_font);
-	painter.drawText(
-		10, m_date_info_y, 
-		this->width(), m_date_info_box_height / 2,
-		Qt::AlignLeft | Qt::AlignVCenter,
-		QDate::currentDate().toString("yyyy")
-	);
+		app_color = _ui_color_manager->getColor("main_year");
+		if (!app_color.isValid())
+		{
+			fatalError("need main_year");
+		}
+		painter.setPen(app_color);
+		painter.setFont(m_now_year_font);
+		painter.drawText(
+			10, m_date_info_y,
+			this->width(), m_date_info_box_height / 2,
+			Qt::AlignLeft | Qt::AlignVCenter,
+			QDate::currentDate().toString("yyyy")
+		);
 
-	painter.setPen(QColor(255, 255, 255, 170));
-	painter.setFont(m_now_mouth_day_font);
-	painter.drawText(
-		15, m_date_info_y + m_date_info_box_height / 2,
-		this->width(), m_date_info_box_height / 2,
-		Qt::AlignLeft | Qt::AlignVCenter,
-		QDate::currentDate().toString("MM 月 dd 日 dddd")
-	);
+		app_color = _ui_color_manager->getColor("main_date");
+		if (!app_color.isValid())
+		{
+			fatalError("need main_date");
+		}
+		painter.setPen(app_color);
+		painter.setFont(m_now_mouth_day_font);
+		painter.drawText(
+			15, m_date_info_y + m_date_info_box_height / 2,
+			this->width(), m_date_info_box_height / 2,
+			Qt::AlignLeft | Qt::AlignVCenter,
+			QDate::currentDate().toString("MM 月 dd 日 dddd")
+		);
+	}
 
-	painter.restore();
-
-	painter.save();
-	QRect _setting_png_rect(
-		this->width() - m_setting_png_width - m_setting_png_padding, 5,
-		m_setting_png_width, m_setting_png_width
-	);
-	painter.drawPixmap(
-		_setting_png_rect, *GlobalVariables::instance()->setting_png
-	);
-	painter.restore();
+	{
+		QRect _setting_png_rect(
+			this->width() - m_setting_png_width - m_setting_png_padding, 5,
+			m_setting_png_width, m_setting_png_width
+		);
+		painter.drawPixmap(
+			_setting_png_rect, *GlobalVariables::instance()->setting_png
+		);
+	}
 }
 
 void ToDoApp::mouseHitTest(QMouseEvent* ev)
@@ -621,23 +655,48 @@ void ToDoApp::updataData()
 	using namespace std::chrono;
 
 	static std::chrono::steady_clock::time_point m_last_tick; 
-	// 取得当前时间 
 	steady_clock::time_point frameStart = steady_clock::now();
 	duration<float> delta = duration<float>(frameStart - m_last_tick);
 
 	GlobalVariables* gv = GlobalVariables::instance();
 	for (ToDoRepeatData* _data : gv->repeat_data_list)
 	{
-		int64_t now_time = QDateTime::currentDateTime().toMSecsSinceEpoch();
-		if (_data->isNeedRepeat(now_time))
+		int64_t _now_date_time = QDateTime::currentDateTime().toMSecsSinceEpoch();
+
+		int64_t _need_repeat_date = _data->getNeedRepeatDate();
+		while (_data->isNeedRepeat(_now_date_time))
 		{
-			_data->setLastAddDateTime(gv->getRepeatInfoFilePath(), now_time);
-			int64_t deadline_time = QDateTime(QDate::currentDate(), QTime(0, 0, 0))
-				.addMSecs(_data->duration).addDays(-1).toMSecsSinceEpoch();
-			this->addToDoListItem(
-				_data->thing, false,// ToDoData::DeadlineType::Day,
-				deadline_time, _data->deadline_time, 0
+			if (!_data->isRepeatDate(_now_date_time))
+			{
+				break;
+			}
+			bool is_first = false;
+			if (_data->last_repeat_date == 0)
+			{
+				_need_repeat_date = QDateTime(
+					QDate::currentDate(), QTime(0, 0, 0)
+				).toMSecsSinceEpoch();
+				is_first = true;
+			}
+			_data->setLastRepeatDate(
+				gv->getRepeatInfoFilePath(), _need_repeat_date
 			);
+			if (is_first && 
+				QTime::currentTime().msecsSinceStartOfDay() >
+				_data->deadline_time)
+			{
+				break;
+			}
+
+			int64_t deadline_time = 
+				QDateTime(
+					QDateTime::fromMSecsSinceEpoch(_need_repeat_date).date(),
+					QTime(0, 0, 0)
+				).addMSecs(_data->duration).addDays(-1).toMSecsSinceEpoch();
+				this->addToDoListItem(
+					_data->thing, false,// ToDoData::DeadlineType::Day,
+					deadline_time, _data->deadline_time, 0
+				);
 		}
 	}
 
@@ -654,13 +713,10 @@ void ToDoApp::initToDoDataAddDialog()
 	form->setLabelAlignment(Qt::AlignRight);
 
 	// thing
-	//QString thing = QString("thing: ");
 	QString thing = QString("任务: ");
 	QLineEdit* thing_box = new QLineEdit(m_to_do_data_add_dialog);
 	form->addRow(thing, thing_box);
-	//m_to_do_data_add_dialog->show();
 	// deadline
-	//QString deadline = QString("deadline: ");
 	QString deadline = QString("结束日期: ");
 	QComboBox* deadline_box = new QComboBox(m_to_do_data_add_dialog);
 	deadline_box->addItem("今天");
@@ -668,7 +724,6 @@ void ToDoApp::initToDoDataAddDialog()
 	deadline_box->addItem("自定义");
 	form->addRow(deadline, deadline_box);
 	// detail deadline
-	//QString detail_deadline = QString("detail deadline: ");
 	QString detail_deadline = QString("具体结束日期: ");
 	NNNDateEditor* detail_deadline_box = 
 		new NNNDateEditor(m_to_do_data_add_dialog);
@@ -702,6 +757,7 @@ void ToDoApp::initToDoDataAddDialog()
 		}
 	);
 
+	// 主界面加号按钮
 	QDialogButtonBox* buttonBox = new QDialogButtonBox(
 		QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
 		Qt::Horizontal, this

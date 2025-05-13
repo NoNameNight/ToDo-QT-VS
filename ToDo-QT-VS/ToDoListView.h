@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QListView>
+#include <QStyledItemDelegate>
 
 class ToDoListView : public QListView
 {
@@ -11,4 +12,6 @@ public:
 
 	void itemClicked(const QModelIndex& index);
 	void itemDoubleClicked(const QModelIndex& index) {}
+private:
+	QStyledItemDelegate* m_delegate = nullptr;
 };
