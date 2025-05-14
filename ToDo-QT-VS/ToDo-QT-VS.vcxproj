@@ -107,20 +107,20 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\thirdparty\Qt-Color-Widgets\include;..\thirdparty\QHotKey\include;..\thirdparty\jsoncpp\include;..\thirdparty\boost\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\thirdparty\QHotKey\include;..\thirdparty\jsoncpp\include;..\thirdparty\boost\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>..\thirdparty\Qt-Color-Widgets\static_lib\x64\Debug;..\thirdparty\QHotKey\lib\x64\Debug;..\thirdparty\jsoncpp\lib\x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>QtColorWidgets.lib;jsoncpp.lib;qhotkey.lib;user32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\thirdparty\QHotKey\lib\x64\Debug;..\thirdparty\jsoncpp\lib\x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>jsoncpp.lib;qhotkey.lib;user32.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\thirdparty\Qt-Color-Widgets\include;..\thirdparty\QHotKey\include;..\thirdparty\jsoncpp\include;..\thirdparty\boost\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\thirdparty\QHotKey\include;..\thirdparty\jsoncpp\include;..\thirdparty\boost\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>..\thirdparty\Qt-Color-Widgets\static_lib\x64\Release;..\thirdparty\QHotKey\lib\x64\Release;..\thirdparty\jsoncpp\lib\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>QtColorWidgets.lib;jsoncpp.lib;qhotkey.lib;user32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\thirdparty\QHotKey\lib\x64\Release;..\thirdparty\jsoncpp\lib\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>jsoncpp.lib;qhotkey.lib;user32.lib</AdditionalDependencies>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
   </ItemDefinitionGroup>
