@@ -2,6 +2,8 @@
 #include "GlobalVariables.h"
 #include "UIColorManager.h"
 
+#include "Snowflake.h"
+
 #include <QMouseEvent>
 #include <QStringListModel>
 #include <QStandardItemModel>
@@ -33,13 +35,13 @@ ToDoApp::ToDoApp(QWidget* parent) :
 	//this->setObjectName("todowidget");
 	//this->setStyleSheet("QWidget #todowidget { border-radius: 10px;background: white;}");
 
-	if (Config::instance()->isTopMost())
+	if (AppInfoData::instance()->isTopMost())
 	{ this->setWindowFlag(Qt::WindowStaysOnTopHint); }
-	if(Config::instance()->isMouseTransparent())
+	if(AppInfoData::instance()->isMouseTransparent())
 	{ this->setWindowFlag(Qt::WindowTransparentForInput); }
 	this->setGeometry(
-		Config::instance()->windowX(), Config::instance()->windowY(),
-		Config::instance()->windowWidth(), Config::instance()->windowHeight()
+		AppInfoData::instance()->windowX(), AppInfoData::instance()->windowY(),
+		AppInfoData::instance()->windowWidth(), AppInfoData::instance()->windowHeight()
 	);
 
 	this->initToDoDataAddDialog();
@@ -111,7 +113,7 @@ ToDoApp::~ToDoApp()
 void ToDoApp::changeTopMost()
 {
 	bool _is_top_most = this->windowFlags() & Qt::WindowStaysOnTopHint;
-	Config::instance()->setIsTopMose(!_is_top_most); 
+	AppInfoData::instance()->setIsTopMose(!_is_top_most); 
 	this->setWindowFlag(Qt::WindowStaysOnTopHint, !_is_top_most);
 	this->show(); 
 }
@@ -120,25 +122,24 @@ void ToDoApp::changeMouseTransparent()
 {
 	bool _is_mouse_transparent = 
 		this->windowFlags() & Qt::WindowTransparentForInput; 
-	Config::instance()->setIsMouseTransparent(!_is_mouse_transparent);
+	AppInfoData::instance()->setIsMouseTransparent(!_is_mouse_transparent);
 	this->setWindowFlag(Qt::WindowTransparentForInput, !_is_mouse_transparent);
 	this->show();
 }
 
-void ToDoApp::addToDoListItem(int64_t data_ptr, int64_t info_ptr, int64_t text_ptr, std::string thing, bool is_finished, int64_t create_time, int64_t deadline_date, int64_t deadline_time, int64_t finished_time)
+void ToDoApp::addToDoListItem(int64_t id, std::string task, bool is_finished, int64_t create_date_time, int64_t deadline_date, int64_t deadline_time, int64_t finished_date_time)
 {
 	QStandardItem* _item = new QStandardItem();
 	ToDoData* _data = new ToDoData();
-	_data->data_ptr = data_ptr;
-	_data->text_ptr = text_ptr;
-	_data->info_ptr = info_ptr;
-	_data->thing = thing;
+	_data->id = id;
+	_data->task = task;
 	_data->is_finished = is_finished;
-	_data->create_date_time = create_time;
+	_data->create_date_time = create_date_time;
 	//_data->deadline_type = deadline_type;
 	_data->deadline_date = deadline_date;
 	_data->deadline_time = deadline_time;
-	_data->finished_date_time = finished_time;
+	_data->finished_date_time = finished_date_time;
+
 	_item->setData(reinterpret_cast<std::uintptr_t>(_data), Qt::UserRole + 1);
 
 	QStandardItemModel* list_view_model =
@@ -161,88 +162,30 @@ void ToDoApp::addToDoListItem(int64_t data_ptr, int64_t info_ptr, int64_t text_p
 	list_view_model->insertRow(_idx, _item);
 }
 
-void ToDoApp::addToDoListItem(std::string thing, bool is_finished, int64_t deadline_date, int64_t deadline_time, int64_t finished_time)
+void ToDoApp::addToDoListItem(int64_t id, std::string task, bool is_finished, int64_t deadline_date, int64_t deadline_time, int64_t finished_date_time)
 {
-	int64_t create_time = QDateTime::currentDateTime().toMSecsSinceEpoch();
+	int64_t create_date_time = QDateTime::currentDateTime().toMSecsSinceEpoch();
 
 	GlobalVariables* gv = GlobalVariables::instance();
-	uint64_t _data_ptr = 0;
-	uint64_t _text_ptr = 0;
-	uint64_t _info_ptr = 0;
-	int64_t _data_file_size = 0;
-	char _size_buf[8] = {};
-
-	{
-		std::ofstream _text_ofs;
-		_text_ofs.open(gv->getTextFilePath(), std::ios::binary | std::ios::app);
-		_text_ofs.seekp(0, std::ios::end);
-		_text_ptr = _text_ofs.tellp();
-		size_t text_size = thing.size();
-		char text_size_char[8] = { };
-		memcpy(text_size_char, &text_size, 8);
-		_text_ofs.write(text_size_char, 8);
-		_text_ofs.write(thing.data(), thing.size());
-		_text_ofs.close();
-	}
-	{
-		std::ofstream _info_ofs;
-		_info_ofs.open(gv->getInfoFilePath(), std::ios::binary | std::ios::app);
-		_info_ofs.seekp(0, std::ios::end);
-		_info_ptr = _info_ofs.tellp();
-		char _info[128] = { };
-		memcpy(_info + ToDoData::text_ptr_offset, &_text_ptr, 8);
-		memcpy(_info + ToDoData::is_finished_offset, &is_finished, 1);
-		memcpy(_info + ToDoData::create_date_time_offset, &create_time, 8);
-		//char deadline_type_char = static_cast<char>(deadline_type);
-		//memcpy(_info + ToDoData::deadline_type_offset, &deadline_type_char, 1);
-		memcpy(_info + ToDoData::deadline_date_offset, &deadline_date, 8);
-		memcpy(_info + ToDoData::deadline_time_offset, &deadline_time, 8);
-		memcpy(_info + ToDoData::finished_date_time_offset, &finished_time, 8);
-		_info_ofs.write(_info, 128);
-		_info_ofs.close();
-	}
-	{
-		std::fstream _data_fs;
-		_data_fs.open(gv->getDataFilePath(), std::ios::binary | std::ios::app);
-		_data_fs.close(); 
-		_data_fs.open( 
-			gv->getDataFilePath(),
-			std::ios::binary | std::ios::out | std::ios::in 
-		);
-
-		_data_fs.seekp(0, std::ios::end);
-		if (_data_fs.tellp() == 0)
-		{
-			int64_t _size = 8;
-			char _size_str[8] = {};
-			memcpy(_size_str, &_size, 8);
-			_data_fs.write(_size_str, 8);
-		}
-		_data_fs.seekg(0, std::ios::beg);
-		_data_fs.read(_size_buf, 8);
-		memcpy(&_data_file_size, _size_buf, 8);
-		_data_ptr = _data_file_size;
-
-		_data_fs.seekp(_data_file_size);
-
-		char _data_buf[64] = {}; 
-		memcpy(_data_buf, &_info_ptr, 8); 
-		_data_fs.write(_data_buf, 64); 
-
-		_data_file_size += 64; 
-		memset(_size_buf, 0, 8); 
-		memcpy(_size_buf, &_data_file_size, 8); 
-		_data_fs.seekp(0, std::ios::beg); 
-		_data_fs.write(_size_buf, 8); 
-
-		_data_fs.close();
-	}
+	DataBase* _db = GlobalVariables::instance()->data_database;
+	std::string _sql_from = "tasks";
+	std::string _sql_what = 
+		"id,is_finished,create_date_time,deadline_date,"
+		"deadline_time,finished_date_time,task";
+	std::string _sql_value = std::to_string(id) + "," +
+		std::to_string(is_finished) + "," +
+		std::to_string(create_date_time) + "," +
+		std::to_string(deadline_date) + "," +
+		std::to_string(deadline_time) + "," +
+		std::to_string(finished_date_time) + "," +
+		"'" + task + "'";
+	_db->DBInsert(_sql_from, _sql_what, _sql_value);
 
 	addToDoListItem(
-		_data_ptr ,_info_ptr, _text_ptr, 
-		thing, is_finished, 
-		create_time,// deadline_type, 
-		deadline_date, deadline_time, finished_time
+		id, 
+		task, is_finished,  
+		create_date_time,
+		deadline_date, deadline_time, finished_date_time 
 	);
 }
 
@@ -430,8 +373,8 @@ void ToDoApp::mouseMoveEvent(QMouseEvent * ev)
 	{
 		QPoint _now_pos = ev->globalPosition().toPoint() - m_drag_position;
 		this->move(_now_pos);
-		Config::instance()->setWindowX(_now_pos.x());
-		Config::instance()->setWindowY(_now_pos.y());
+		AppInfoData::instance()->setWindowX(_now_pos.x());
+		AppInfoData::instance()->setWindowY(_now_pos.y());
 		ev->accept();
 		break;
 	}
@@ -463,8 +406,8 @@ void ToDoApp::mouseReleaseEvent(QMouseEvent* ev)
 void ToDoApp::resizeEvent(QResizeEvent* event)
 {
 	QSize app_size = event->size();
-	Config::instance()->setWindowWidth(app_size.width());
-	Config::instance()->setWindowHeight(app_size.height());
+	AppInfoData::instance()->setWindowWidth(app_size.width());
+	AppInfoData::instance()->setWindowHeight(app_size.height());
 
 	QRect to_do_data_add = m_to_do_data_add->geometry();
 	m_to_do_data_add->setGeometry(
@@ -482,28 +425,16 @@ void ToDoApp::resizeEvent(QResizeEvent* event)
 void ToDoApp::paintEvent(QPaintEvent* event)
 {
 	QPainter painter(this);
-	Config* _config = Config::instance();
+	AppInfoData* _config = AppInfoData::instance();
 
 	// 设置抗锯齿
 	painter.setRenderHint(QPainter::Antialiasing);
 
 	//Config::UIColor* _temp_color = nullptr;
 	UIColorManager* _ui_color_manager = UIColorManager::instance();
-	// 设置背景颜色
-	//_temp_color = _config->getUIColor("main_bg");
-	//QColor app_color(100, 100, 100, 100);
-	//if (_temp_color)
-	//{
-	//	app_color = UIColor2QColor(_temp_color);
-	//	_temp_color = nullptr;
-	//}
 
 	QColor app_color;
 	app_color = _ui_color_manager->getColor("main_bg");
-	if (!app_color.isValid())
-	{
-		fatalError("need main_bg");
-	}
 	painter.setBrush(app_color);
 	painter.setPen(app_color);
 
@@ -514,10 +445,6 @@ void ToDoApp::paintEvent(QPaintEvent* event)
 
 	{
 		app_color = _ui_color_manager->getColor("main_time");
-		if (!app_color.isValid())
-		{
-			fatalError("need main_time");
-		}
 		painter.setPen(app_color);
 		painter.drawText(
 			1, 0, this->width() - 2, m_top_box_height,
@@ -525,10 +452,6 @@ void ToDoApp::paintEvent(QPaintEvent* event)
 		);
 
 		app_color = _ui_color_manager->getColor("main_year");
-		if (!app_color.isValid())
-		{
-			fatalError("need main_year");
-		}
 		painter.setPen(app_color);
 		painter.setFont(m_now_year_font);
 		painter.drawText(
@@ -539,10 +462,6 @@ void ToDoApp::paintEvent(QPaintEvent* event)
 		);
 
 		app_color = _ui_color_manager->getColor("main_date");
-		if (!app_color.isValid())
-		{
-			fatalError("need main_date");
-		}
 		painter.setPen(app_color);
 		painter.setFont(m_now_mouth_day_font);
 		painter.drawText(
@@ -666,37 +585,18 @@ void ToDoApp::updataData()
 		int64_t _need_repeat_date = _data->getNeedRepeatDate();
 		while (_data->isNeedRepeat(_now_date_time))
 		{
-			if (!_data->isRepeatDate(_now_date_time))
-			{
-				break;
-			}
-			bool is_first = false;
-			if (_data->last_repeat_date == 0)
-			{
-				_need_repeat_date = QDateTime(
-					QDate::currentDate(), QTime(0, 0, 0)
-				).toMSecsSinceEpoch();
-				is_first = true;
-			}
-			_data->setLastRepeatDate(
-				gv->getRepeatInfoFilePath(), _need_repeat_date
-			);
-			if (is_first && 
-				QTime::currentTime().msecsSinceStartOfDay() >
-				_data->deadline_time)
-			{
-				break;
-			}
 
+			_data->setLastAddDate(_need_repeat_date);
 			int64_t deadline_time = 
 				QDateTime(
 					QDateTime::fromMSecsSinceEpoch(_need_repeat_date).date(),
 					QTime(0, 0, 0)
 				).addMSecs(_data->duration).addDays(-1).toMSecsSinceEpoch();
-				this->addToDoListItem(
-					_data->thing, false,// ToDoData::DeadlineType::Day,
-					deadline_time, _data->deadline_time, 0
-				);
+			this->addToDoListItem(
+				Snowflake::instance()->getId(), _data->task, false,
+				deadline_time, _data->deadline_time, 0
+			);
+			_need_repeat_date = _data->getNeedRepeatDate();
 		}
 	}
 
@@ -713,9 +613,9 @@ void ToDoApp::initToDoDataAddDialog()
 	form->setLabelAlignment(Qt::AlignRight);
 
 	// thing
-	QString thing = QString("任务: ");
+	QString task = QString("任务: ");
 	QLineEdit* thing_box = new QLineEdit(m_to_do_data_add_dialog);
-	form->addRow(thing, thing_box);
+	form->addRow(task, thing_box);
 	// deadline
 	QString deadline = QString("结束日期: ");
 	QComboBox* deadline_box = new QComboBox(m_to_do_data_add_dialog);
@@ -766,12 +666,13 @@ void ToDoApp::initToDoDataAddDialog()
 		m_to_do_data_add_dialog,
 		[this, thing_box, deadline_box, detail_deadline_box, deadline_time_box]() {
 			this->addToDoListItem(
+				Snowflake::instance()->getId(),
 				thing_box->text().toStdString(), false,
 				//ToDoData::DeadlineType::Day, 
-				QDateTime(
-					detail_deadline_box->date(), QTime(0, 0, 0)
-				).toMSecsSinceEpoch(),
-				deadline_time_box->time().msecsSinceStartOfDay(), 0
+				QDateTime( 
+					detail_deadline_box->date(), QTime(0, 0, 0) 
+				).toMSecsSinceEpoch(), 
+				deadline_time_box->time().msecsSinceStartOfDay(), 0 
 			);
 
 			m_to_do_data_add_dialog->hide();

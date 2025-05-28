@@ -1,6 +1,8 @@
 #include <QMessageBox>
 #include "Util.h"
 
+#include "Config.h"
+
 #include <QDateTime>
 
 std::string getUUID(GenderatorUUIDType type)
@@ -104,7 +106,27 @@ void fatalError(const std::string error)
 	exit(-1);
 }
 
-Config::HotkeyData::HotkeyData(int64_t data_ptr, const char* buf)
+int32_t str2int32_t(const std::string& str)
+{
+	int32_t res = 0;
+	for (const char& c : str)
+	{
+		res = res * 10 + (c - '0');
+	}
+	return res;
+}
+
+int64_t str2int64_t(const std::string& str)
+{
+	int64_t res = 0;
+	for (const char& c : str)
+	{
+		res = res * 10 + (c - '0');
+	}
+	return res;
+}
+
+AppInfoData::HotkeyData::HotkeyData(int64_t data_ptr, const char* buf)
 {
 	this->m_config_ptr = data_ptr;
 	int _shortcut_key_offset = 0;
@@ -118,7 +140,7 @@ Config::HotkeyData::HotkeyData(int64_t data_ptr, const char* buf)
 	_shortcut_key_offset += 1;
 }
 
-void Config::HotkeyData::toBinary(char* buf) const
+void AppInfoData::HotkeyData::toBinary(char* buf) const
 {
 	int _shortcut_key_offset = 0;
 	memcpy(buf + _shortcut_key_offset, &this->m_is_ctrl, 1);
@@ -130,7 +152,7 @@ void Config::HotkeyData::toBinary(char* buf) const
 	memcpy(buf + _shortcut_key_offset, &this->m_hotkey_char, 1);
 	_shortcut_key_offset += 1;
 }
-void Config::HotkeyData::setIsCtrl(bool flag)
+void AppInfoData::HotkeyData::setIsCtrl(bool flag)
 {
 	int _is_ctrl_ptr = this->m_config_ptr;
 	this->m_is_ctrl = flag;
@@ -138,7 +160,8 @@ void Config::HotkeyData::setIsCtrl(bool flag)
 	memcpy(_buffer, &this->m_is_ctrl, 1);
 	std::ofstream _config_ofs;
 	_config_ofs.open(
-		Config::instance()->m_config_file_path,
+		//AppInfoData::instance()->m_window_state_file_path,
+		Config::instance()->getWindowStateFilePath(),
 		std::ios::binary | std::ios::in | std::ios::out
 	);
 	_config_ofs.seekp(_is_ctrl_ptr);
@@ -146,7 +169,7 @@ void Config::HotkeyData::setIsCtrl(bool flag)
 	_config_ofs.close();
 }
 
-void Config::HotkeyData::setIsAlt(bool flag)
+void AppInfoData::HotkeyData::setIsAlt(bool flag)
 {
 	int _is_ctrl_ptr = this->m_config_ptr + 1;
 	this->m_is_alt = flag;
@@ -154,7 +177,8 @@ void Config::HotkeyData::setIsAlt(bool flag)
 	memcpy(_buffer, &this->m_is_alt, 1);
 	std::ofstream _config_ofs;
 	_config_ofs.open(
-		Config::instance()->m_config_file_path,
+		//AppInfoData::instance()->m_window_state_file_path,
+		Config::instance()->getWindowStateFilePath(),
 		std::ios::binary | std::ios::in | std::ios::out
 	);
 	_config_ofs.seekp(_is_ctrl_ptr);
@@ -162,7 +186,7 @@ void Config::HotkeyData::setIsAlt(bool flag)
 	_config_ofs.close();
 }
 
-void Config::HotkeyData::setIsShift(bool flag)
+void AppInfoData::HotkeyData::setIsShift(bool flag)
 {
 	int _is_ctrl_ptr = this->m_config_ptr + 2;
 	this->m_is_shift = flag;
@@ -170,7 +194,8 @@ void Config::HotkeyData::setIsShift(bool flag)
 	memcpy(_buffer, &this->m_is_shift, 1);
 	std::ofstream _config_ofs;
 	_config_ofs.open(
-		Config::instance()->m_config_file_path,
+		//AppInfoData::instance()->m_window_state_file_path,
+		Config::instance()->getWindowStateFilePath(),
 		std::ios::binary | std::ios::in | std::ios::out
 	);
 	_config_ofs.seekp(_is_ctrl_ptr);
@@ -178,13 +203,14 @@ void Config::HotkeyData::setIsShift(bool flag)
 	_config_ofs.close();
 }
 
-void Config::HotkeyData::setHotkeyChar(char c)
+void AppInfoData::HotkeyData::setHotkeyChar(char c)
 {
 	int _is_ctrl_ptr = this->m_config_ptr + 7;
 	this->m_hotkey_char = c;
 	std::ofstream _config_ofs;
 	_config_ofs.open(
-		Config::instance()->m_config_file_path,
+		//AppInfoData::instance()->m_window_state_file_path,
+		Config::instance()->getWindowStateFilePath(),
 		std::ios::binary | std::ios::in | std::ios::out
 	);
 	_config_ofs.seekp(_is_ctrl_ptr);
@@ -192,7 +218,7 @@ void Config::HotkeyData::setHotkeyChar(char c)
 	_config_ofs.close();
 }
 
-std::string Config::HotkeyData::getHotkeyFuncKeyString() const
+std::string AppInfoData::HotkeyData::getHotkeyFuncKeyString() const
 {
 	std::string _res = "";
 	if (m_is_ctrl)
@@ -213,7 +239,7 @@ std::string Config::HotkeyData::getHotkeyFuncKeyString() const
 }
 
 
-void Config::loadConfig()
+void AppInfoData::loadFromFile()
 {
 	const int64_t _config_data_begin = 0;
 	const int64_t _config_data_buf_size = 64;
@@ -224,14 +250,21 @@ void Config::loadConfig()
 		_config_shortcut_key_begin + _config_shortcut_key_buf_size;
 	const int64_t _config_ui_color_buf_size = 1024;
 	std::fstream _config_fs;
-	_config_fs.open(this->m_config_file_path, std::ios::binary | std::ios::out | std::ios::in);
+	_config_fs.open(
+		Config::instance()->getWindowStateFilePath(),
+		std::ios::binary | std::ios::out | std::ios::in
+	);
 
 	if (!_config_fs.is_open() || !_config_fs.good())
 	{
-		_config_fs.open(this->m_config_file_path, std::ios::binary | std::ios::app);
+		_config_fs.open(
+			Config::instance()->getWindowStateFilePath(),
+			std::ios::binary | std::ios::app
+		);
 		_config_fs.close();
 		_config_fs.open(
-			this->m_config_file_path,
+			//this->m_window_state_file_path,
+			Config::instance()->getWindowStateFilePath(),
 			std::ios::binary | std::ios::out | std::ios::in
 		);
 	}
@@ -307,75 +340,51 @@ void Config::loadConfig()
 		_config_fs.read(_shortcut_key_buf, _config_shortcut_key_buf_size);
 		{
 			int _shortcut_key_offset = 0;
-			m_hotkey_data_list["mouse_transparent"] =
-				new HotkeyData(
-					_config_shortcut_key_begin + _shortcut_key_offset,
-					_shortcut_key_buf + _shortcut_key_offset
+			for (const auto& _name : m_hotkey_name_list)
+			{
+				m_hotkey_data_list[_name] =
+					new HotkeyData(
+						_config_shortcut_key_begin + _shortcut_key_offset,
+						_shortcut_key_buf + _shortcut_key_offset
+					);
+				m_hotkey_data_list[_name]->setHotkey(
+					new QHotkey(
+						QKeySequence(
+							QString::fromStdString(
+								m_hotkey_data_list[_name]->getHotkeyString()
+							)
+						), true
+					)
 				);
-			_shortcut_key_offset += 8;
-			m_hotkey_data_list["top_most"] =
-				new HotkeyData(
-					_config_shortcut_key_begin + _shortcut_key_offset,
-					_shortcut_key_buf + _shortcut_key_offset
-				);
-			_shortcut_key_offset += 8;
+				_shortcut_key_offset += 8;
+			}
+			//m_hotkey_data_list["mouse_transparent"] =
+			//	new HotkeyData(
+			//		_config_shortcut_key_begin + _shortcut_key_offset,
+			//		_shortcut_key_buf + _shortcut_key_offset
+			//	);
+			//_shortcut_key_offset += 8;
+			//m_hotkey_data_list["top_most"] =
+			//	new HotkeyData(
+			//		_config_shortcut_key_begin + _shortcut_key_offset,
+			//		_shortcut_key_buf + _shortcut_key_offset
+			//	);
+			//_shortcut_key_offset += 8;
 		}
 	}
-
-	//// 加载ui颜色
-	//{
-	//	_config_fs.seekg(_config_ui_color_begin);
-	//	if (_config_fs.peek() == EOF)
-	//	{
-	//		_config_fs.clear();
-	//		_config_fs.seekp(_config_ui_color_begin);
-	//		char _ui_color_buf[_config_ui_color_buf_size] = {};
-	//		int _ui_color_offset = 0;
-
-	//		std::vector<Config::UIColor> _ui_color_list = {
-	//			Config::UIColor(-1, 100, 100, 100, 100),
-	//			Config::UIColor(-1, 255, 255, 255, 170),
-	//			Config::UIColor(-1, 255, 255, 255, 150),
-	//			Config::UIColor(-1, 255, 255, 255, 170)
-	//		};
-	//		for (const Config::UIColor& _color : _ui_color_list)
-	//		{
-	//			_color.toBinary(_ui_color_buf + _ui_color_offset);
-	//			_ui_color_offset += 4;
-	//		}
-	//		_config_fs.write(_ui_color_buf, _config_ui_color_buf_size);
-	//	}
-
-	//	char _ui_color_buf[_config_ui_color_buf_size] = {};
-	//	_config_fs.seekg(_config_ui_color_begin); 
-	//	_config_fs.read(_ui_color_buf, _config_ui_color_buf_size); 
-	//	{
-	//		std::vector<std::string> _ui_color_name_list =
-	//			{ "main_bg", "main_time", "main_year", "main_date" };
-	//		int _ui_color_offset = 0;
-	//		for (const std::string& _str : _ui_color_name_list)
-	//		{
-	//			m_ui_color_list[_str] =
-	//				new Config::UIColor(
-	//					_config_ui_color_begin + _ui_color_offset,
-	//					_ui_color_buf + _ui_color_offset
-	//				);
-	//			_ui_color_offset += 4;
-	//		}
-	//	}
-	//}
 
 	_config_fs.close();
 }
 
-void Config::setWindowX(int x)
+void AppInfoData::setWindowX(int x)
 {
 	this->m_window_x = x;
 	char _buffer[4] = {};
 	memcpy(_buffer, &this->m_window_x, 4);
 	std::ofstream _config_ofs;
 	_config_ofs.open(
-		this->m_config_file_path, 
+		//this->m_window_state_file_path, 
+		Config::instance()->getWindowStateFilePath(),
 		std::ios::binary | std::ios::in | std::ios::out
 	);
 	_config_ofs.seekp(0);
@@ -383,14 +392,15 @@ void Config::setWindowX(int x)
 	_config_ofs.close();
 }
 
-void Config::setWindowY(int y)
+void AppInfoData::setWindowY(int y)
 {
 	this->m_window_y = y;
 	char _buffer[4] = {};
 	memcpy(_buffer, &this->m_window_y, 4);
 	std::ofstream _config_ofs;
 	_config_ofs.open(
-		this->m_config_file_path,
+		//this->m_window_state_file_path,
+		Config::instance()->getWindowStateFilePath(),
 		std::ios::binary | std::ios::in | std::ios::out
 	);
 	_config_ofs.seekp(4);
@@ -398,14 +408,15 @@ void Config::setWindowY(int y)
 	_config_ofs.close();
 }
 
-void Config::setWindowWidth(int width)
+void AppInfoData::setWindowWidth(int width)
 {
 	this->m_window_width = width;
 	char _buffer[4] = {};
 	memcpy(_buffer, &this->m_window_width, 4);
 	std::ofstream _config_ofs;
 	_config_ofs.open(
-		this->m_config_file_path,
+		//this->m_window_state_file_path,
+		Config::instance()->getWindowStateFilePath(),
 		std::ios::binary | std::ios::in | std::ios::out
 	);
 	_config_ofs.seekp(8);
@@ -413,14 +424,15 @@ void Config::setWindowWidth(int width)
 	_config_ofs.close();
 }
 
-void Config::setWindowHeight(int height)
+void AppInfoData::setWindowHeight(int height)
 {
 	this->m_window_height = height;
 	char _buffer[4] = {};
 	memcpy(_buffer, &this->m_window_height, 4);
 	std::ofstream _config_ofs;
 	_config_ofs.open(
-		this->m_config_file_path,
+		//this->m_window_state_file_path,
+		Config::instance()->getWindowStateFilePath(),
 		std::ios::binary | std::ios::in | std::ios::out
 	);
 	_config_ofs.seekp(12);
@@ -428,14 +440,15 @@ void Config::setWindowHeight(int height)
 	_config_ofs.close();
 }
 
-void Config::setIsMouseTransparent(bool flag)
+void AppInfoData::setIsMouseTransparent(bool flag)
 {
 	this->m_is_mouse_transparent = flag; 
 	char _buffer[1] = {};
 	memcpy(_buffer, &this->m_is_mouse_transparent, 1);
 	std::ofstream _config_ofs;
 	_config_ofs.open(
-		this->m_config_file_path,
+		//this->m_window_state_file_path,
+		Config::instance()->getWindowStateFilePath(),
 		std::ios::binary | std::ios::in | std::ios::out
 	);
 	_config_ofs.seekp(16);
@@ -443,14 +456,15 @@ void Config::setIsMouseTransparent(bool flag)
 	_config_ofs.close();
 }
 
-void Config::setIsTopMose(bool flag)
+void AppInfoData::setIsTopMose(bool flag)
 {
 	this->m_is_top_most = flag; 
 	char _buffer[1] = {};
 	memcpy(_buffer, &this->m_is_top_most, 1);
 	std::ofstream _config_ofs;
 	_config_ofs.open(
-		this->m_config_file_path,
+		//this->m_window_state_file_path,
+		Config::instance()->getWindowStateFilePath(),
 		std::ios::binary | std::ios::in | std::ios::out
 	);
 	_config_ofs.seekp(17);
@@ -458,7 +472,7 @@ void Config::setIsTopMose(bool flag)
 	_config_ofs.close();
 }
 
-Config::HotkeyData* Config::getHotkeyData(std::string name) const
+AppInfoData::HotkeyData* AppInfoData::getHotkeyData(std::string name) const
 {
 	std::unordered_map<std::string, HotkeyData*>::const_iterator _it =
 		m_hotkey_data_list.find(name);

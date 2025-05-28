@@ -164,14 +164,14 @@ void ToDoDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, 
 	/// is ok draw
 	{
 		QRect ok_rect = getOkRectRect(option.rect);
-		_temp_pen_color = _ui_color_manager->getColor("checkbox_border");
+		_temp_pen_color = _ui_color_manager->getColor("main_checkbox_border");
 		if (itemData->is_finished)
 		{
-			_temp_brush_color = _ui_color_manager->getColor("checkbox_bg_ok");
+			_temp_brush_color = _ui_color_manager->getColor("main_checkbox_bg_ok");
 		}
 		else
 		{
-			_temp_brush_color = _ui_color_manager->getColor("ckeckbox_bg");
+			_temp_brush_color = _ui_color_manager->getColor("main_checkbox_bg");
 		}
 		painter->setPen(_temp_pen_color);
 		painter->setBrush(_temp_brush_color);
@@ -179,7 +179,7 @@ void ToDoDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, 
 
 		if (itemData->is_finished)
 		{
-			_temp_pen_color = _ui_color_manager->getColor("checkbox_check");
+			_temp_pen_color = _ui_color_manager->getColor("main_checkbox_check");
 			painter->setPen(_temp_pen_color);
 			painter->drawText(
 				option.rect.x() + 10, option.rect.y() + 10,
@@ -200,7 +200,7 @@ void ToDoDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, 
 
 		QFontMetrics metrics(painter->font());
 		QString text_text = metrics.elidedText(
-			itemData->thing.data(),
+			itemData->task.data(),
 			Qt::ElideRight, text_rect.width()
 		);
 		_temp_pen_color = _ui_color_manager->getColor("main_task_task");
@@ -269,7 +269,7 @@ void ToDoDelegate::setEditorData(QWidget* editor, const QModelIndex& index) cons
 	QVariant var = index.data(Qt::UserRole + 1);
 	ToDoData* itemData = reinterpret_cast<ToDoData*>(var.value<std::uintptr_t>());
 
-	lineEdit->setText(itemData->thing.data());
+	lineEdit->setText(itemData->task.data());
 }
 
 void ToDoDelegate::setModelData(QWidget* editor, QAbstractItemModel* model, const QModelIndex& index) const
@@ -280,7 +280,7 @@ void ToDoDelegate::setModelData(QWidget* editor, QAbstractItemModel* model, cons
 	QLineEdit* lineBox = static_cast<QLineEdit*>(editor);
 	QString str = lineBox->text();
 
-	itemData->thing = str.toStdString();
+	itemData->setTask(str.toStdString());
 }
 
 
@@ -347,15 +347,17 @@ void ToDoListView::itemClicked(const QModelIndex& index)
 	
 	if(_ok_rect.contains(_mouse_x, _mouse_y))
 	{
-		itemData->is_finished = !itemData->is_finished;
+		//itemData->is_finished = !itemData->is_finished;
+		itemData->setIsFinished(!itemData->is_finished);
 		if (itemData->is_finished)
 		{
-			itemData->finished_date_time = 
-				QDateTime::currentDateTime().toMSecsSinceEpoch();
+			itemData->setFinishedDateTime(
+				QDateTime::currentDateTime().toMSecsSinceEpoch()
+			);
 		}
 		else
 		{
-			itemData->finished_date_time = 0;
+			itemData->setFinishedDateTime(0);
 		}
 		// 获取模型并发射 dataChanged 信号
 		QAbstractItemModel* model = this->model();
@@ -368,18 +370,7 @@ void ToDoListView::itemClicked(const QModelIndex& index)
 		_list_view_model->takeRow(index.row());
 
 		GlobalVariables* gv = GlobalVariables::instance();
-		std::ofstream _ofs;
-		_ofs.open(
-			gv->getInfoFilePath(),
-			std::ios::binary | std::ios::out | std::ios::in
-		);
 
-		_ofs.seekp(itemData->info_ptr + itemData->is_finished_offset);
-		_ofs.write((char*)(&itemData->is_finished), 1);
-		_ofs.seekp(itemData->info_ptr + itemData->finished_date_time_offset);
-		_ofs.write((char*)(&itemData->finished_date_time), 8);
-
-		_ofs.close();
 		addItemToModel(_item, itemData, _list_view_model);
 	}
 	else if (_delete_png_rect.contains(_mouse_x, _mouse_y))
@@ -402,9 +393,10 @@ void ToDoListView::itemClicked(const QModelIndex& index)
 		if (_ret == QMessageBox::Ok)
 		{
 
-			itemData->deleteThis(
-				GlobalVariables::instance()->getDataFilePath()
-			);
+			//itemData->deleteThis(
+			//	GlobalVariables::instance()->getDataFilePath()
+			//);
+			itemData->deleteThis();
 			QStandardItemModel* list_view_model =
 				static_cast<QStandardItemModel*>(this->model());
 			list_view_model->takeRow(index.row()); 

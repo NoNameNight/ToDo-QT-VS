@@ -1,51 +1,4 @@
-data.data 
-	{ 8B
-		size 8B
-	}
-	[ 64B
-		ptr 8B /*point to info.data*/
-		//uuid 32B  
-	]
-text.data 
-	[ (8+size)B
-		size 8B /*text size*/ 
-		text (size)B
-	]
-info.data 
-	[ 128B
-		ptr 8B /*point to text.data*/   0
-		is_finished 1B                  8
-		create_date_time 8B             9
-		// deadline_type 1B             17 // no use
-		deadline_date 8B                18
-		deadline_time 8B                26
-		finished_date_time 8B           34
-	]
-
-repeat_data.data 
-	{ 8B
-		size 8B
-	}
-	[ 64B
-		ptr 8B /*point to repeat_info.data*/
-	]
-repeat_text.data 
-	[ (8+size)B  
-		size 8B /*text size*/ 
-		text (size)B
-	]
-repeat_info.data 
-	[ 64B 
-		ptr 8B /*point to repeat_text.data*/
-		repeat_type 1B
-		last_add_date_time 8B
-		duration 8B
-		deadline_time 8B
-		detail_repeat_date 4B
-	]
-
-
-config.data
+app_info.bin
 	{ 64B
 		window_x 4B                 0
 		window_y 4B                 4
@@ -63,3 +16,25 @@ config.data
 			char 1B                 6
 		]
 	}
+
+
+CREATE TABLE tasks (
+    id BIGINT PRIMARY KEY NOT NULL,                    -- 64位整数，使用 INTEGER 亲和类型（规则1）
+    is_finished BOOLEAN NOT NULL DEFAULT 0,            -- 布尔值，使用 NUMERIC 亲和类型（规则5）
+    create_date_time BIGINT NOT NULL,                  -- 64位时间戳（如Unix时间），使用 INTEGER（规则1）
+    deadline_date BIGINT NOT NULL,                     -- 64位日期（如YYYYMMDD），使用 INTEGER（规则1）
+    deadline_time BIGINT NOT NULL,                     -- 64位时间（如HHMMSS），使用 INTEGER（规则1）
+    finished_date_time BIGINT NOT NULL DEFAULT 0,      -- 64位时间戳，使用 INTEGER（规则1）
+	task TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE repeat_tasks ( 
+    id BIGINT PRIMARY KEY  NOT NULL,                   -- int64_t
+    repeat_type TINYINT NOT NULL,                      -- int8_t
+    create_date_time NOT NULL,                         -- int64_t
+    last_add_date BIGINT  NOT NULL DEFAULT 0,          -- int64_t
+    duration BIGINT NOT NULL,                          -- int64_t
+    deadline_time BIGINT NOT NULL,                     -- int64_t
+    detail_repeat_date INT  NOT NULL,                  -- int32_t
+    task TEXT NOT NULL DEFAULT ''                      -- std::string
+);

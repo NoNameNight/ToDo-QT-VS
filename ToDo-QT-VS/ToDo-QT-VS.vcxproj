@@ -107,20 +107,20 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\thirdparty\QHotKey\include;..\thirdparty\jsoncpp\include;..\thirdparty\boost\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\thirdparty\SQLite\include;..\thirdparty\QHotKey\include;..\thirdparty\jsoncpp\include;..\thirdparty\boost\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>..\thirdparty\QHotKey\lib\x64\Debug;..\thirdparty\jsoncpp\lib\x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>jsoncpp.lib;qhotkey.lib;user32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\thirdparty\SQLite\lib;..\thirdparty\QHotKey\lib\x64\Debug;..\thirdparty\jsoncpp\lib\x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>sqlite3.lib;jsoncpp.lib;qhotkey.lib;user32.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\thirdparty\QHotKey\include;..\thirdparty\jsoncpp\include;..\thirdparty\boost\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\thirdparty\SQLite\include;..\thirdparty\QHotKey\include;..\thirdparty\jsoncpp\include;..\thirdparty\boost\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>..\thirdparty\QHotKey\lib\x64\Release;..\thirdparty\jsoncpp\lib\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>jsoncpp.lib;qhotkey.lib;user32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\thirdparty\SQLite\lib;..\thirdparty\QHotKey\lib\x64\Release;..\thirdparty\jsoncpp\lib\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>sqlite3.lib;jsoncpp.lib;qhotkey.lib;user32.lib</AdditionalDependencies>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
   </ItemDefinitionGroup>
@@ -181,6 +181,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="DataBase.cpp" />
     <ClCompile Include="GlobalVariables.cpp" />
     <ClCompile Include="main.cpp">
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
@@ -201,12 +202,15 @@
     <ClCompile Include="ToDoData.cpp" />
     <ClCompile Include="ToDoListView.cpp" />
     <ClCompile Include="ToDoRepeatData.cpp" />
+    <ClCompile Include="UIColorManager.cpp" />
     <ClCompile Include="Util.cpp" />
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="ToDoApp.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Config.h" />
+    <ClInclude Include="DataBase.h" />
     <ClInclude Include="GlobalVariables.h" />
     <ClInclude Include="SettingWidget\SettingMainUIColorWidget.h" />
     <ClInclude Include="SettingWidget\HotkeySetWidget.h" />
@@ -216,6 +220,7 @@
     <ClInclude Include="SettingWidget\SettingShortcutKeysWidget.h" />
     <ClInclude Include="SettingWidget\SettingRepeatTaskWidget.h" />
     <ClInclude Include="SettingWidget.h" />
+    <ClInclude Include="Snowflake.h" />
     <ClInclude Include="TitleDivider.h" />
     <ClInclude Include="ToDoData.h" />
     <ClInclude Include="ToDoListView.h" />

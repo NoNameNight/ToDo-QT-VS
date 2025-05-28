@@ -20,18 +20,17 @@ public:
 	void changeTopMost();
 	void changeMouseTransparent();
 	void addToDoListItem(
-		int64_t data_ptr, int64_t info_ptr, int64_t text_ptr,
-		std::string thing, bool is_finished, 
-		int64_t create_time,
-		//ToDoData::DeadlineType deadline_type,
+		int64_t id,
+		std::string task, bool is_finished, 
+		int64_t create_date_time,
 		int64_t deadline_date, int64_t deadline_time, 
-		int64_t finished_time 
+		int64_t finished_date_time
 	);
 	void addToDoListItem(
-		std::string thing, bool is_finished,
-		//ToDoData::DeadlineType deadline_type, 
+		int64_t id,
+		std::string task, bool is_finished,
 		int64_t deadline_date, int64_t deadline_time,
-		int64_t finished_time
+		int64_t finished_date_time
 	);
 	void showToDoDataAddDialog()
 	{

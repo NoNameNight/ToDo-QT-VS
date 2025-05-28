@@ -11,8 +11,8 @@
 class HotkeySetWidget : public QWidget
 {
 public:
-	HotkeySetWidget(QWidget* parent, Config::HotkeyData* data, QHotkey* hotkey) :
-		QWidget(parent), m_data(data), m_hotkey(hotkey)
+	HotkeySetWidget(QWidget* parent, AppInfoData::HotkeyData* data) :
+		QWidget(parent), m_data(data)
 	{
 		QLabel* _warning_icon = new QLabel(this);
 
@@ -22,7 +22,7 @@ public:
 			QComboBox* _func_key_box = new QComboBox(this);
 			_func_key_box->setGeometry(0, 0, 140, 30);
 
-			static enum FuncKeyStatue : uint32_t
+			enum FuncKeyStatue : uint32_t
 			{
 				Ctrl = 0b1,
 				Alt = 0b10,
@@ -45,7 +45,7 @@ public:
 			_func_key_box->blockSignals(false);
 
 			connect(_func_key_box, &QComboBox::currentIndexChanged, this,
-				[parent, _func_key_box, data, hotkey, _warning_icon]() {
+				[parent, _func_key_box, data, _warning_icon]() {
 					int _statue = _func_key_box->currentData().value<int>();
 					bool _last_ctrl = data->isCtrl();
 					bool _last_alt = data->isAlt();
@@ -53,9 +53,9 @@ public:
 					data->setIsCtrl(_statue & FuncKeyStatue::Ctrl);
 					data->setIsAlt(_statue & FuncKeyStatue::Alt);
 					data->setIsShift(_statue & FuncKeyStatue::Shift);
-					hotkey->setRegistered(false);
+					data->hotkey()->setRegistered(false);
 
-					bool success = hotkey->setShortcut(
+					bool success = data->hotkey()->setShortcut(
 						QKeySequence(
 							QString::fromStdString(data->getHotkeyString())
 						), true
@@ -66,7 +66,7 @@ public:
 						data->setIsCtrl(_last_ctrl);
 						data->setIsAlt(_last_alt);
 						data->setIsShift(_last_shift);
-						hotkey->setShortcut(
+						data->hotkey()->setShortcut(
 							QKeySequence(
 								QString::fromStdString(data->getHotkeyString())
 							), true
@@ -81,7 +81,7 @@ public:
 						QMessageBox::warning(parent, "错误", "快捷键已被注册");
 					}
 
-					if (hotkey->isRegistered())
+					if (data->hotkey()->isRegistered())
 					{
 						_warning_icon->hide();
 					}
@@ -111,13 +111,13 @@ public:
 			);
 			// 连接 returnPressed 信号
 			connect(_char_box, &QLineEdit::returnPressed,
-				[parent, _char_box, data, hotkey, _warning_icon]() {
+				[parent, _char_box, data, _warning_icon]() {
 					_char_box->clearFocus();
 					char _last_char = data->hotkeyChar();
 					data->setHotkeyChar(_char_box->text().toStdString()[0]);
-					hotkey->setRegistered(false);
+					data->hotkey()->setRegistered(false);
 
-					bool success = hotkey->setShortcut(
+					bool success = data->hotkey()->setShortcut(
 						QKeySequence(
 							QString::fromStdString(data->getHotkeyString())
 						), true
@@ -126,7 +126,7 @@ public:
 					if (!success)
 					{
 						data->setHotkeyChar(_last_char);
-						hotkey->setShortcut(
+						data->hotkey()->setShortcut(
 							QKeySequence(
 								QString::fromStdString(data->getHotkeyString())
 							), true
@@ -137,7 +137,7 @@ public:
 						QMessageBox::warning(parent, "错误", "快捷键已被注册");
 					}
 
-					if (hotkey->isRegistered())
+					if (data->hotkey()->isRegistered())
 					{
 						_warning_icon->hide();
 					}
@@ -155,7 +155,7 @@ public:
 			_warning_icon->setToolTip(tr("热键已被注册")); // 添加悬停提示
 			_warning_icon->move(210, 15 - 8);
 			_warning_icon->hide();
-			if (!hotkey->isRegistered())
+			if (!data->hotkey()->isRegistered())
 			{
 				_warning_icon->show();
 			}
@@ -163,6 +163,5 @@ public:
 	}
 protected:
 private:
-	Config::HotkeyData* m_data;
-	QHotkey* m_hotkey;
+	AppInfoData::HotkeyData* m_data;
 };

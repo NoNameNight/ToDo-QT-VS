@@ -1,0 +1,6 @@
+{
+	"database_file_name" : "data.db",
+	"file_dir" : "data",
+	"ui_color_file_name" : "ui_color_argb.json",
+	"window_state_file_name" : "app_info.bin"
+}

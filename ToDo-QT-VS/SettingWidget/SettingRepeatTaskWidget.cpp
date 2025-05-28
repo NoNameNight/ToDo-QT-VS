@@ -4,6 +4,9 @@
 #include "RepeatDataListView.h"
 #include "TitleDivider.h"
 #include "Util.h"
+
+#include "Snowflake.h"
+
 #include <QFormLayout>
 #include <QLineEdit>
 #include <QComboBox>
@@ -128,7 +131,8 @@ SettingRepeatTaskWidget::SettingRepeatTaskWidget(QWidget* parent) :
 						* 24 * 60 * 60 * 1000;
 					int64_t _deadline_time = deadline_time_box->time().msecsSinceStartOfDay();
 					int32_t _detail_repeat_date = detail_repeat_date_box->value();
-					gv->addRepeatData(
+					ToDoRepeatData* _new_data = gv->addRepeatData(
+						Snowflake::instance()->getId(),
 						thing_input_edit->text().toStdString(),
 						static_cast<ToDoRepeatData::RepeatType>(
 							repeat_box->currentData().value<char>()
@@ -136,9 +140,7 @@ SettingRepeatTaskWidget::SettingRepeatTaskWidget(QWidget* parent) :
 					);
 					QStandardItem* _item = new QStandardItem();
 					_item->setData(
-						reinterpret_cast<uintptr_t>(
-							gv->repeat_data_list[gv->repeat_data_list.size() - 1]
-							),
+						reinterpret_cast<uintptr_t>(_new_data),
 						Qt::UserRole + 1
 					);
 					static_cast<QStandardItemModel*>(

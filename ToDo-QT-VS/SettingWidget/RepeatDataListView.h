@@ -14,6 +14,4 @@ protected:
 	void itemClicked(const QModelIndex& index);
 protected:
 	std::function<void(const QModelIndex&)> m_clicked_func;
-	int m_delete_box_width = 20;
-	int m_delete_png_width = 15;
 };

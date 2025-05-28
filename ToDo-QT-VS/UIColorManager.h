@@ -7,7 +7,6 @@
 #include <QColor>
 
 #include <json/json.h>
-#include <fstream>
 
 #include <vector>
 
@@ -20,124 +19,41 @@ public:
 		return &manager;
 	}
 
-	QColor getColor(const std::string& name)
-	{
-		auto _it = m_ui_color_list.find(name);
-		if (_it == m_ui_color_list.end())
-		{
-			fatalError("need " + name);
-			return QColor();
-		}
-		return _it->second;
-	}
-	bool setColor(const std::string& name, QColor color)
-	{
-		if (m_ui_color_list.find(name) == m_ui_color_list.end())
-		{
-			return false;
-		}
-		m_ui_color_list[name] = color;
-		m_ui_color_json[name] = color.name(QColor::HexArgb).toStdString();
+	QColor getColor(const std::string& name);
+	bool setColor(const std::string& name, QColor color);
+	bool addColor(const std::string& name, QColor color);
 
-		uiColorUpdate();
-		return true;
-	}
-	bool addColor(const std::string& name, QColor color)
-	{
-		if (m_ui_color_list.find(name) != m_ui_color_list.end())
-		{
-			return false;
-		}
-		m_ui_color_list[name] = color;
-		m_ui_color_json[name] = color.name(QColor::HexArgb).toStdString();
-		return true;
-	}
-
-	void addUIColorUpdateFunc(std::function<void()> func)
-	{
-		m_ui_color_update_func_list.emplace_back(func);
-	}
+	//void addUIColorUpdateFunc(std::function<void()> func)
+	//{
+	//	m_ui_color_update_func_list.emplace_back(func);
+	//}
 
 	//bool loadFromFile(const std::string ui_color_file_path)
-	bool loadFromFile()
-	{
-		do
-		{
-			std::ifstream ifs;
-			//ifs.open(ui_color_file_path);
-			ifs.open(m_ui_color_file_path);
-			if (!ifs.is_open() || !ifs.good()) { break; }
-			Json::Reader().parse(ifs, m_ui_color_json);
-			ifs.close();
-
-			if (!m_ui_color_json.isObject())
-			{
-				m_ui_color_json = Json::Value();
-				break;
-			}
-			Json::Value::Members keys = m_ui_color_json.getMemberNames();
-			for (const auto& key : keys)
-			{
-				m_ui_color_list[key] =
-					QColor::fromString(m_ui_color_json[key].asString());
-			}
-		} while (0);
-
-		for (auto _it = m_default_ui_color_list.begin();
-			_it != m_default_ui_color_list.end(); ++_it)
-		{
-			if (m_ui_color_list.find(_it->first) != m_ui_color_list.end())
-			{
-				continue;
-			}
-			this->addColor(_it->first, _it->second);
-		}
-		return true;
-	}
+	bool loadFromFile();
 	//bool saveToFile(const std::string ui_color_file_path)
-	bool saveToFile()
-	{
-		std::ofstream ofs;
-		//ofs.open(ui_color_file_path);
-		ofs.open(m_ui_color_file_path);
-		if (!ofs.is_open() || !ofs.good()) { return false; }
-		ofs << m_ui_color_json.toStyledString();
-		ofs.close();
-		return true;
-	}
+	bool saveToFile();
 
-	void setColorToDefault()
-	{
-		for (auto _it = m_default_ui_color_list.begin();
-			_it != m_default_ui_color_list.end(); ++_it)
-		{
-			m_ui_color_list[_it->first] = _it->second;
-			m_ui_color_json[_it->first] = 
-				_it->second.name(QColor::HexArgb).toStdString();
-		}
-		this->saveToFile();
-		uiColorUpdate();
-	}
+	void setColorToDefault();
 private:
 	UIColorManager() = default;
 	UIColorManager(const UIColorManager& other) = delete;
 	~UIColorManager() = default;
 
-	void uiColorUpdate()
-	{
-		for (auto _it = m_ui_color_update_func_list.begin();
-			_it != m_ui_color_update_func_list.end(); ++_it)
-		{
-			(*_it)();
-		}
-	}
+	//void uiColorUpdate()
+	//{
+	//	for (auto _it = m_ui_color_update_func_list.begin();
+	//		_it != m_ui_color_update_func_list.end(); ++_it)
+	//	{
+	//		(*_it)();
+	//	}
+	//}
 private:
 	std::unordered_map<std::string, QColor> m_default_ui_color_list =
 	{
-		{ "ckeckbox_bg", QColor(200, 200, 200, 50) },
-		{ "checkbox_bg_ok",  QColor(100, 100, 100, 150)},
-		{ "checkbox_check", QColor(200, 200, 200, 255) },
-		{ "checkbox_border", QColor(100, 100, 100, 100) },
+		{ "main_checkbox_bg", QColor(200, 200, 200, 50) },
+		{ "main_checkbox_bg_ok",  QColor(100, 100, 100, 150)},
+		{ "main_checkbox_check", QColor(200, 200, 200, 255) },
+		{ "main_checkbox_border", QColor(100, 100, 100, 100) },
 		{ "main_bg", QColor(100, 100, 100, 100) },
 		{ "main_time", QColor(255, 255, 255, 170) },
 		{ "main_year", QColor(255, 255, 255, 150) },
@@ -154,7 +70,5 @@ private:
 	std::unordered_map<std::string, QColor> m_ui_color_list;
 	Json::Value m_ui_color_json;
 
-	std::string m_ui_color_file_path = "ui_color_argb.json";
-
-	std::vector<std::function<void()>> m_ui_color_update_func_list;
+	//std::vector<std::function<void()>> m_ui_color_update_func_list;
 };

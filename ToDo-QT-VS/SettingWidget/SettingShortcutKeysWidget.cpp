@@ -31,15 +31,13 @@ SettingShortcutKeysWidget::SettingShortcutKeysWidget(QWidget* parent) :
 	);
 	HotkeySetWidget* _top_most = new HotkeySetWidget(
 		this,
-		Config::instance()->getHotkeyData("top_most"),
-		GlobalVariables::instance()->top_most_hotkey
+		AppInfoData::instance()->getHotkeyData("top_most")
 	);
 	_hotkey_form->addRow("窗口置顶: ", _top_most);
 
 	HotkeySetWidget* _mouse_transparent = new HotkeySetWidget(
 		this,
-		Config::instance()->getHotkeyData("mouse_transparent"),
-		GlobalVariables::instance()->mouse_transparent_hotkey
+		AppInfoData::instance()->getHotkeyData("mouse_transparent")
 	);
 	_hotkey_form->addRow("鼠标穿透: ", _mouse_transparent);
 

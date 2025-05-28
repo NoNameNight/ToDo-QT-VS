@@ -1,17 +1,8 @@
 #include "ToDoRepeatData.h"
 
+#include "GlobalVariables.h"
+
 #include <QDateTime>
-
-#include <fstream>
-
-const int ToDoRepeatData::text_ptr_offset = 0;
-const int ToDoRepeatData::repeat_type_offset = 8;
-const int ToDoRepeatData::last_add_date_time_offset = 9;
-const int ToDoRepeatData::duration_offset = 17;
-const int ToDoRepeatData::deadline_time_offset = 25;
-const int ToDoRepeatData::detail_repeat_date_offset = 33;
-//const int ToDoRepeatData::this_offset = 64;
-const int ToDoRepeatData::this_size = 64;
 
 std::string ToDoRepeatData::getRepeatTypeString(RepeatType type) const
 {
@@ -33,153 +24,90 @@ std::string ToDoRepeatData::getRepeatTypeString(RepeatType type) const
 	return "error";
 }
 
-void ToDoRepeatData::setThing(std::string info_file_path, std::string text_file_path, std::string thing)
+void ToDoRepeatData::setTask(std::string task)
 {
-	if (thing == this->thing) { return; }
-	this->thing = thing;
-	std::fstream _text_fs;
-	std::ofstream _info_ofs;
-	_text_fs.open(text_file_path, std::ios::binary | std::ios::in | std::ios::out);
-	_info_ofs.open(info_file_path, std::ios::binary | std::ios::in | std::ios::out);
+	if (task == this->task) { return; }
+	this->task = task;
 
-	char _size_buf[8] = {};
-	int64_t _text_file_size = 0;
-	int64_t _text_ptr = 0;
-	_text_fs.seekg(0, std::ios::beg);
-	_text_fs.read(_size_buf, 8);
-	memcpy(&_text_file_size, _size_buf, 8);
-	_text_ptr = _text_file_size;
-
-	_text_fs.seekp(_text_ptr);
-	memset(_size_buf, 0, 8);
-	int64_t _thing_size = this->thing.size();
-	memcpy(_size_buf, &_thing_size, 8);
-	_text_fs.write(_size_buf, 8);
-	_text_fs.write(this->thing.data(), this->thing.size());
-	_text_file_size += 8 + this->thing.size();
-	_text_fs.seekp(0, std::ios::beg);
-	memset(_size_buf, 0, 8);
-	memcpy(_size_buf, &_text_file_size, 8);
-	_text_fs.write(_size_buf, 8);
-
-	_info_ofs.seekp(this->info_ptr + this->text_ptr_offset);
-	memset(_size_buf, 0, 8);
-	memcpy(_size_buf, &_text_ptr, 8);
-	_info_ofs.write(_size_buf, 8);
-
-	_text_fs.close();
-	_info_ofs.close();
+	DataBase* _db = GlobalVariables::instance()->data_database;
+	std::string _sql_from = "repeat_tasks";
+	DBUpdateList _update_list;
+	_update_list.emplace_back("task", task, true);
+	std::string _sql_where = "id=" + std::to_string(id);
+	_db->DBUpdate(_sql_from, _update_list, _sql_where);
 }
 
-void ToDoRepeatData::setRepeatType(std::string info_file_path, RepeatType type)
+void ToDoRepeatData::setRepeatType(RepeatType type)
 {
 	this->repeat_type = type;
-	std::ofstream _info_ofs;
-	_info_ofs.open(info_file_path, std::ios::binary | std::ios::in | std::ios::out);
 
-	_info_ofs.seekp(this->info_ptr + this->repeat_type_offset);
-	char _repeat_type_char = static_cast<char>(this->repeat_type);
-	_info_ofs.write(&_repeat_type_char, 1);
-
-	_info_ofs.close();
+	int _repeat_type_int = static_cast<int>(this->repeat_type);
+	DataBase* _db = GlobalVariables::instance()->data_database;
+	std::string _sql_from = "repeat_tasks";
+	DBUpdateList _update_list;
+	_update_list.emplace_back("repeat_type", std::to_string(_repeat_type_int), false);
+	std::string _sql_where = "id=" + std::to_string(id);
+	_db->DBUpdate(_sql_from, _update_list, _sql_where);
 }
 
-void ToDoRepeatData::setDetailRepeateDate(std::string info_file_path, int32_t time)
+void ToDoRepeatData::setDetailRepeateDate(int32_t time)
 {
 	this->detail_repeat_date = time;
-	std::ofstream _info_ofs;
-	_info_ofs.open(
-		info_file_path, std::ios::binary | std::ios::out | std::ios::in
-	);
 
-	_info_ofs.seekp(this->info_ptr + this->detail_repeat_date_offset);
-	char size_buf[4] = {};
-	memcpy(&size_buf, &this->detail_repeat_date, 4);
-	_info_ofs.write(size_buf, 4);
-
-	_info_ofs.close();
+	DataBase* _db = GlobalVariables::instance()->data_database;
+	std::string _sql_from = "repeat_tasks";
+	DBUpdateList _update_list;
+	_update_list.emplace_back("detail_repeat_date", std::to_string(detail_repeat_date), false);
+	std::string _sql_where = "id=" + std::to_string(id);
+	_db->DBUpdate(_sql_from, _update_list, _sql_where);
 }
 
-void ToDoRepeatData::setLastRepeatDate(std::string info_file_path, int64_t time)
+void ToDoRepeatData::setLastAddDate(int64_t time)
 {
-	this->last_repeat_date = time;
-	std::ofstream _info_ofs;
-	_info_ofs.open(
-		info_file_path, std::ios::binary | std::ios::out | std::ios::in
-	);
+	
+	this->last_add_date = QDateTime(
+		QDateTime::fromMSecsSinceEpoch(time).date(),
+		QTime(0, 0, 0)
+	).toMSecsSinceEpoch();//time;
 
-	_info_ofs.seekp(this->info_ptr + this->last_add_date_time_offset);
-	char size_buf[8] = {};
-	memcpy(&size_buf, &this->last_repeat_date, 8);
-	_info_ofs.write(size_buf, 8);
-
-	_info_ofs.close();
+	DataBase* _db = GlobalVariables::instance()->data_database;
+	std::string _sql_from = "repeat_tasks";
+	DBUpdateList _update_list;
+	_update_list.emplace_back("last_add_date", std::to_string(last_add_date), false);
+	std::string _sql_where = "id=" + std::to_string(id);
+	_db->DBUpdate(_sql_from, _update_list, _sql_where);
 }
 
-void ToDoRepeatData::setDuration(std::string info_file_path, int64_t duration)
+void ToDoRepeatData::setDuration(int64_t duration)
 {
 	this->duration = duration;
-	std::ofstream _info_ofs;
-	_info_ofs.open(
-		info_file_path, std::ios::binary | std::ios::out | std::ios::in
-	);
 
-	_info_ofs.seekp(this->info_ptr + this->duration_offset);
-	char size_buf[8] = {};
-	memcpy(&size_buf, &this->duration, 8);
-	_info_ofs.write(size_buf, 8);
-
-	_info_ofs.close();
+	DataBase* _db = GlobalVariables::instance()->data_database;
+	std::string _sql_from = "repeat_tasks";
+	DBUpdateList _update_list;
+	_update_list.emplace_back("duration", std::to_string(duration), false);
+	std::string _sql_where = "id=" + std::to_string(id);
+	_db->DBUpdate(_sql_from, _update_list, _sql_where);
 }
 
-void ToDoRepeatData::setDeadlineTime(std::string info_file_path, int64_t time)
+void ToDoRepeatData::setDeadlineTime(int64_t time)
 {
 	this->deadline_time = time;
-	std::ofstream _info_ofs;
-	_info_ofs.open(
-		info_file_path, std::ios::binary | std::ios::out | std::ios::in
-	);
 
-	_info_ofs.seekp(this->info_ptr + this->deadline_time_offset);
-	char size_buf[8] = {};
-	memcpy(&size_buf, &this->deadline_time, 8);
-	_info_ofs.write(size_buf, 8);
-
-	_info_ofs.close();
+	DataBase* _db = GlobalVariables::instance()->data_database;
+	std::string _sql_from = "repeat_tasks";
+	DBUpdateList _update_list;
+	_update_list.emplace_back("deadline_time", std::to_string(deadline_time), false);
+	std::string _sql_where = "id=" + std::to_string(id);
+	_db->DBUpdate(_sql_from, _update_list, _sql_where);
 }
 
-void ToDoRepeatData::deleteThis(std::string data_file_path)
+void ToDoRepeatData::deleteThis()
 {
-	std::fstream _data_fs;
-	_data_fs.open(
-		data_file_path, std::ios::binary | std::ios::out | std::ios::in
-	);
-
-	_data_fs.seekp(0, std::ios::beg);
-
-	char _size_buf[8] = {};
-	int64_t _data_file_size = 0;
-	_data_fs.read(_size_buf, 8);
-	memcpy(&_data_file_size, _size_buf, 8);
-
-	int64_t _now_data_ptr = this->data_ptr + 64;
-	_data_fs.seekg(_now_data_ptr);
-	while (_data_fs.tellg() < _data_file_size && _data_fs.peek() != EOF)
-	{
-		char _data_buf[64] = {};
-		_data_fs.read(_data_buf, 64);
-		_data_fs.seekp(_now_data_ptr - 64);
-		_data_fs.write(_data_buf, 64);
-		_now_data_ptr += 64;
-		_data_fs.seekg(_now_data_ptr);
-	}
-	_data_file_size -= 64;
-	memset(_size_buf, 0, 8);
-	memcpy(_size_buf, &_data_file_size, 8);
-	_data_fs.seekp(0, std::ios::beg);
-	_data_fs.write(_size_buf, 8);
-
-	_data_fs.close();
+	DataBase* _db = GlobalVariables::instance()->data_database;
+	std::string _sql_from = "repeat_tasks";
+	std::string _sql_where = "id=" + std::to_string(id);
+	_db->DBDelete(_sql_from, _sql_where);
 }
 
 
@@ -235,7 +163,15 @@ bool ToDoRepeatData::isNeedRepeat(int64_t now_time) const
 
 int64_t ToDoRepeatData::getNeedRepeatDate() const
 {
-	QDateTime _need_repeat_date = QDateTime::fromMSecsSinceEpoch(this->last_repeat_date);
+	QDateTime _need_repeat_date = QDateTime::fromMSecsSinceEpoch(this->last_add_date);
+	if (this->last_add_date == 0)
+	{
+		//_need_repeat_date = QDateTime::fromMSecsSinceEpoch(this->);
+		_need_repeat_date = QDateTime(
+			QDateTime::fromMSecsSinceEpoch(this->create_date_time).date(),
+			QTime(0, 0, 0)
+		);
+	}
 
 	switch (this->repeat_type)
 	{

@@ -46,12 +46,14 @@ public:
 
 };
 
-class Config
+int32_t str2int32_t(const std::string& str);
+int64_t str2int64_t(const std::string& str);
+
+class AppInfoData
 {
 public:
 	class HotkeyData
 	{
-		//friend class Config;
 	public:
 		/**
 		* @param config_ptr  data 在 config 文件中的位置
@@ -85,6 +87,9 @@ public:
 		{
 			return this->getHotkeyFuncKeyString() + "+" + m_hotkey_char;
 		}
+		void setHotkey(QHotkey* hotkey) { m_hotkey = hotkey; } 
+		QHotkey* hotkey() const { return m_hotkey; } 
+
 	private:
 		std::string getHotkeyFuncKeyString() const;
 	private:
@@ -93,14 +98,16 @@ public:
 		bool m_is_alt = true;
 		bool m_is_shift = false;
 		char m_hotkey_char = ' ';
+
+		QHotkey* m_hotkey = nullptr;
 	};
 public:
-	static Config* instance()
+	static AppInfoData* instance()
 	{
-		static Config config;
+		static AppInfoData config;
 		return &config;
 	}
-	void loadConfig();
+	void loadFromFile();
 	void setWindowX(int x);
 	int windowX() const { return m_window_x; }
 	void setWindowY(int y);
@@ -116,13 +123,13 @@ public:
 
 	HotkeyData* getHotkeyData(std::string name) const;
 private:
-	Config() = default;
-	Config(const Config& other) = delete;
-	~Config() = default;
+	AppInfoData() = default;
+	AppInfoData(const AppInfoData& other) = delete;
+	~AppInfoData() = default;
 
 	//std::string getHotkeyFuncKeyString() const;
 private:
-	std::string m_config_file_path = "config.data";
+	//std::string m_window_state_file_path = "app_info.bin";
 	int m_window_x = 100;
 	int m_window_y = 100;
 	int m_window_width = 302;
@@ -130,5 +137,8 @@ private:
 	bool m_is_mouse_transparent = false;
 	bool m_is_top_most = true;
 
+	std::vector<std::string> m_hotkey_name_list = {
+		"mouse_transparent", "top_most"
+	};
 	std::unordered_map<std::string, HotkeyData*> m_hotkey_data_list;
 };
